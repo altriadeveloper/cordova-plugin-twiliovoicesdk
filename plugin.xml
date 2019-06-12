@@ -92,8 +92,8 @@
         <!-- Add the Twilio Voice plugin to the iOS app's config.xml -->
         <config-file target="config.xml" parent="widget">
           <feature name="TwilioVoicePlugin">
-            <param name="ios-package"
-                value="TwilioVoicePlugin"/>
+            <param name="ios-package" value="TwilioVoicePlugin"/>
+            <param name="onload" value="true"/>
           </feature>
         </config-file>
 

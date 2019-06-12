@@ -91,8 +91,27 @@ static NSString *const kTwimlParamTo = @"To";
     } else {
         self.maskIncomingPhoneNumber = NO;
     }
+
+    // initialize VOIP Push Registry
+    self.voipPushRegistry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
+    self.voipPushRegistry.delegate = self;
+    self.voipPushRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
     
-    if (!self.enableCallKit) {
+    if (self.enableCallKit) {
+        // initialize CallKit (based on Twilio ObjCVoiceCallKitQuickstart)
+        NSString *incomingCallAppName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"TVPIncomingCallAppName"];
+        CXProviderConfiguration *configuration = [[CXProviderConfiguration alloc] initWithLocalizedName:incomingCallAppName];
+        configuration.maximumCallGroups = 1;
+        configuration.maximumCallsPerCallGroup = 1;
+        UIImage *callkitIcon = [UIImage imageNamed:@"logo.png"];
+        configuration.iconTemplateImageData = UIImagePNGRepresentation(callkitIcon);
+        configuration.ringtoneSound = @"traditionalring.mp3";
+        
+        self.callKitProvider = [[CXProvider alloc] initWithConfiguration:configuration];
+        [self.callKitProvider setDelegate:self queue:nil];
+        
+        self.callKitCallController = [[CXCallController alloc] init];
+    } else {
         //ask for notification support
         UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
         UNAuthorizationOptions options = UNAuthorizationOptionAlert + UNAuthorizationOptionSound;
@@ -129,28 +148,6 @@ static NSString *const kTwimlParamTo = @"To";
     
     self.accessToken = [command.arguments objectAtIndex:0];
     if (self.accessToken) {
-        
-        // initialize VOIP Push Registry
-        self.voipPushRegistry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
-        self.voipPushRegistry.delegate = self;
-        self.voipPushRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
-        
-        if (self.enableCallKit) {
-            // initialize CallKit (based on Twilio ObjCVoiceCallKitQuickstart)
-            NSString *incomingCallAppName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"TVPIncomingCallAppName"];
-            CXProviderConfiguration *configuration = [[CXProviderConfiguration alloc] initWithLocalizedName:incomingCallAppName];
-            configuration.maximumCallGroups = 1;
-            configuration.maximumCallsPerCallGroup = 1;
-            UIImage *callkitIcon = [UIImage imageNamed:@"logo.png"];
-            configuration.iconTemplateImageData = UIImagePNGRepresentation(callkitIcon);
-            configuration.ringtoneSound = @"traditionalring.mp3";
-            
-            self.callKitProvider = [[CXProvider alloc] initWithConfiguration:configuration];
-            [self.callKitProvider setDelegate:self queue:nil];
-            
-            self.callKitCallController = [[CXCallController alloc] init];
-        }
-
         [self javascriptCallback:@"onclientinitialized"];
     }
     
