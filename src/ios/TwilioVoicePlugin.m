@@ -276,14 +276,16 @@ static NSString *const kTwimlParamTo = @"To";
     if ([type isEqualToString:PKPushTypeVoIP]) {
         self.pushDeviceToken = [credentials.token description];
         NSLog(@"Updating push device token for VOIP: %@",self.pushDeviceToken);
-        [TwilioVoice registerWithAccessToken:self.accessToken
-                                                  deviceToken:self.pushDeviceToken completion:^(NSError * _Nullable error) {
-            if (error) {
-                NSLog(@"Error registering Voice Client for VOIP Push: %@", [error localizedDescription]);
-            } else {
-                NSLog(@"Registered Voice Client for VOIP Push");
-            }
-        }];
+        if (self.accessToken != nil) {
+            [TwilioVoice registerWithAccessToken:self.accessToken
+                                                    deviceToken:self.pushDeviceToken completion:^(NSError * _Nullable error) {
+                if (error) {
+                    NSLog(@"Error registering Voice Client for VOIP Push: %@", [error localizedDescription]);
+                } else {
+                    NSLog(@"Registered Voice Client for VOIP Push");
+                }
+            }];
+        }
     }
 }
 
