@@ -147,10 +147,11 @@ static NSString *const kTwimlParamTo = @"To";
     self.callback = command.callbackId;
     
     self.accessToken = [command.arguments objectAtIndex:0];
+    [self registerTwilioWithAccessToken];
+    
     if (self.accessToken) {
         [self javascriptCallback:@"onclientinitialized"];
     }
-    
 }
 
 - (void) call:(CDVInvokedUrlCommand*)command {
@@ -271,21 +272,27 @@ static NSString *const kTwimlParamTo = @"To";
     }
 }
 
+- (void) registerTwilioWithAccessToken {
+    NSLog(@"Twilio: Have PushDeviceToken: %@", self.pushDeviceToken != nil);
+    NSLog(@"Twilio: Have AccessToken: %@", self.accessToken != nil);
+
+    if (self.pushDeviceToken != nil && self.accessToken != nil) {
+        [TwilioVoice registerWithAccessToken:self.accessToken
+                                                    deviceToken:self.pushDeviceToken completion:^(NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"Error registering Voice Client for VOIP Push: %@", [error localizedDescription]);
+            } else {
+                NSLog(@"Registered Voice Client for VOIP Push");
+            }
+        }];
+    }
+}
+
 #pragma mark PKPushRegistryDelegate methods
 - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPushCredentials *)credentials forType:(PKPushType)type {
     if ([type isEqualToString:PKPushTypeVoIP]) {
         self.pushDeviceToken = [credentials.token description];
-        NSLog(@"Updating push device token for VOIP: %@",self.pushDeviceToken);
-        if (self.accessToken != nil) {
-            [TwilioVoice registerWithAccessToken:self.accessToken
-                                                    deviceToken:self.pushDeviceToken completion:^(NSError * _Nullable error) {
-                if (error) {
-                    NSLog(@"Error registering Voice Client for VOIP Push: %@", [error localizedDescription]);
-                } else {
-                    NSLog(@"Registered Voice Client for VOIP Push");
-                }
-            }];
-        }
+        [self registerTwilioWithAccessToken];
     }
 }
 
