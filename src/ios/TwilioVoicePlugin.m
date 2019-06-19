@@ -148,7 +148,7 @@ static NSString *const kTwimlParamTo = @"To";
     
     self.accessToken = [command.arguments objectAtIndex:0];
     [self registerTwilioWithAccessToken];
-    
+
     if (self.accessToken) {
         [self javascriptCallback:@"onclientinitialized"];
     }
@@ -273,8 +273,8 @@ static NSString *const kTwimlParamTo = @"To";
 }
 
 - (void) registerTwilioWithAccessToken {
-    NSLog(@"Twilio: Have PushDeviceToken: %@", self.pushDeviceToken != nil);
-    NSLog(@"Twilio: Have AccessToken: %@", self.accessToken != nil);
+    NSLog(@"Twilio - PushDeviceToken exists: %d", self.pushDeviceToken != nil);
+    NSLog(@"Twilio - AccessToken exists: %d", self.accessToken != nil);
 
     if (self.pushDeviceToken != nil && self.accessToken != nil) {
         [TwilioVoice registerWithAccessToken:self.accessToken
