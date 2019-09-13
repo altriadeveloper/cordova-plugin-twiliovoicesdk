@@ -40,7 +40,7 @@
         <preference name="FCM_VERSION" default="10.2.1"/>
         <preference name="VOICE_ANDROID_VERSION" default="2.0.7"/>
 
-        <dependency id="phonegap-plugin-push"/> <!-- uses $FCM_VERSION for "firebase-messaging" -->
+        <dependency id="https://github.com/jbertucci-adig/phonegap-plugin-push"/> <!-- uses $FCM_VERSION for "firebase-messaging" -->
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
             <!-- [START fcm_listener] -->
