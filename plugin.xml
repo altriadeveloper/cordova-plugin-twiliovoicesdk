@@ -77,6 +77,7 @@
         </config-file>
         
         <framework src="com.google.gms:google-services:$GOOGLE_SERVICES_VERSION" />
+        <framework src="com.google.firebase:firebase-messaging:$FCM_VERSION" />
         <framework src="com.twilio:voice-android:$VOICE_ANDROID_VERSION"/>
 
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/TwilioVoicePlugin.java"
