@@ -37,6 +37,7 @@
         </config-file>
 
         <preference name="GOOGLE_SERVICES_VERSION" default="3.0.0"/>
+        <preference name="FIREBASE_CORE_VERSION" default="16.0.7"/>
         <preference name="FCM_VERSION" default="10.2.1"/>
         <preference name="VOICE_ANDROID_VERSION" default="2.0.7"/>
 
@@ -76,7 +77,6 @@
         </config-file>
         
         <framework src="com.google.gms:google-services:$GOOGLE_SERVICES_VERSION" />
-        <framework src="com.google.firebase:firebase-messaging:$FCM_VERSION" />
         <framework src="com.twilio:voice-android:$VOICE_ANDROID_VERSION"/>
 
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/TwilioVoicePlugin.java"
