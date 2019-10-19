@@ -90,7 +90,7 @@
     <!-- ios -->
     <platform name="ios">
         <!-- Add the Twilio Voice plugin to the iOS app's config.xml -->
-        <pod name="TwilioVoice" version="5.0.0"/>
+        <framework src="TwilioVoice" type="podspec" spec="5.0.0" />
 
         <config-file target="config.xml" parent="widget">
           <feature name="TwilioVoicePlugin">
