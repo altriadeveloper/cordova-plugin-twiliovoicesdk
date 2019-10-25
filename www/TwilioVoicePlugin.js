@@ -60,7 +60,7 @@
         Cordova.exec(success,error,"TwilioVoicePlugin","initializeWithAccessToken",[token]);
     }
 
-    TwilioPlugin.TwilioVoiceClient.prototype.initialize = function(token, shouldRegisterForPush) {
+    TwilioPlugin.TwilioVoiceClient.prototype.initializeWithAccessTokenAndShouldRegisterForPush = function(token, shouldRegisterForPush) {
 
         var error = function(error) {
             //TODO: Handle errors here
