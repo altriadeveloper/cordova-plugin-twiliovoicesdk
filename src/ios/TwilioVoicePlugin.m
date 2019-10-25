@@ -39,6 +39,9 @@ static NSString *const kTwimlParamTo = @"To";
 // Access Token from Twilio
 @property (nonatomic, strong) NSString *accessToken;
 
+// Should Register For VOIP Push
+@property (nonatomic, assign) BOOL shouldRegisterForPush;
+
 // Outgoing call params
 @property (nonatomic, strong) NSDictionary *outgoingCallParams;
 
@@ -138,6 +141,11 @@ static NSString *const kTwimlParamTo = @"To";
         }
     }
     
+}
+
+- (void) initializeWithAccessTokenAndShouldRegisterForPush:(CDVInvokedUrlCommand*)command {
+    self.shouldRegisterForPush = [[command.arguments objectAtIndex:1] boolValue];
+    [self initializeWithAccessToken:command];
 }
 
 - (void) initializeWithAccessToken:(CDVInvokedUrlCommand*)command  {
@@ -275,14 +283,21 @@ static NSString *const kTwimlParamTo = @"To";
 - (void) registerTwilioWithAccessToken {
     NSLog(@"Twilio - PushDeviceToken exists: %d", self.pushDeviceToken != nil);
     NSLog(@"Twilio - AccessToken exists: %d", self.accessToken != nil);
-
-    if (self.pushDeviceToken != nil && self.accessToken != nil) {
+    NSLog(@"Twilio - ShouldRegisterForPush: %d", self.shouldRegisterForPush);
+    
+    if (self.pushDeviceToken != nil && self.accessToken != nil && self.shouldRegisterForPush) {
         [TwilioVoice registerWithAccessToken:self.accessToken
                                                     deviceToken:self.pushDeviceToken completion:^(NSError * _Nullable error) {
             if (error) {
                 NSLog(@"Error registering Voice Client for VOIP Push: %@", [error localizedDescription]);
             } else {
                 NSLog(@"Registered Voice Client for VOIP Push");
+                
+                NSDictionary *pushTokenProperties = @{
+                    @"pushDeviceToken":self.pushDeviceToken
+                };
+                [self javascriptCallback:@"onpushdevicetokenregistered" withArguments:pushTokenProperties];
+                NSLog(@"Notified client of registered push device token.");
             }
         }];
     }
