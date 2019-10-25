@@ -60,6 +60,22 @@
         Cordova.exec(success,error,"TwilioVoicePlugin","initializeWithAccessToken",[token]);
     }
 
+    TwilioPlugin.TwilioVoiceClient.prototype.initialize = function(token, shouldRegisterForPush) {
+
+        var error = function(error) {
+            //TODO: Handle errors here
+            if(delegate['onerror']) delegate['onerror'](error)
+        }
+
+        var success = function(callback) {
+            var argument = callback['arguments'];
+            if (delegate[callback['callback']]) delegate[callback['callback']](argument);
+        }
+
+
+        Cordova.exec(success,error,"TwilioVoicePlugin","initializeWithAccessTokenAndShouldRegisterForPush",[token, shouldRegisterForPush]);
+    }
+
     TwilioPlugin.TwilioVoiceClient.prototype.error = function(fn) {
         delegate['onerror'] = fn;
     }
