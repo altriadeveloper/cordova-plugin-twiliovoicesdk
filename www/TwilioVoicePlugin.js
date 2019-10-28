@@ -76,6 +76,10 @@ cordova.define("cordova-plugin-twiliovoicesdk.CordovaCall", function(require, ex
     
             Cordova.exec(success,error,"TwilioVoicePlugin","initializeWithAccessTokenAndShouldRegisterForPush",[token, shouldRegisterForPush]);
         }
+
+        TwilioPlugin.TwilioVoiceClient.prototype.registerCurrentDeviceForPush = function(oldDevicePushToken) {
+            Cordova.exec(null, null, "TwilioVoicePlugin", "registerCurrentDeviceForPush", [oldDevicePushToken]);
+        }
     
         TwilioPlugin.TwilioVoiceClient.prototype.error = function(fn) {
             delegate['onerror'] = fn;

@@ -280,6 +280,30 @@ static NSString *const kTwimlParamTo = @"To";
     }
 }
 
+- (void) registerCurrentDeviceForPush: (CDVInvokedUrlCommand*)command {
+    NSLog(@"Registering current device for push.");
+    NSString* oldPushDeviceToken = [command.arguments objectAtIndex:0];
+    if (oldPushDeviceToken || ![oldPushDeviceToken isEqual:[NSNull null]]) {
+        // we have an old push device token, let's unregister the old one first
+        [self unregisterOldPushDevice: oldPushDeviceToken];
+    }
+    self.shouldRegisterForPush = true;
+    [self registerTwilioWithAccessToken];
+}
+
+- (void) unregisterOldPushDevice: (NSString*)oldPushDeviceToken {
+    NSLog(@"Unregistering old push device token..");
+    if (self.accessToken != nil && oldPushDeviceToken != nil) {
+        [TwilioVoice unregisterWithAccessToken:self.accessToken deviceToken:oldPushDeviceToken completion:^(NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"Error unregistering Voice Client for VOIP Push: %@", [error localizedDescription]);
+            } else {
+                NSLog(@"Unregistered Voice Client for VOIP Push");
+            }
+        }];
+    }
+}
+
 - (void) registerTwilioWithAccessToken {
     NSLog(@"Twilio - PushDeviceToken exists: %d", self.pushDeviceToken != nil);
     NSLog(@"Twilio - AccessToken exists: %d", self.accessToken != nil);
