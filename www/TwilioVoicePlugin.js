@@ -105,6 +105,10 @@
         delegate['oncalldiddisconnect'] = fn;
     }
 
+    TwilioPlugin.TwilioVoiceClient.prototype.pushdevicetokenregistered = function(fn) {
+        delegate['onpushdevicetokenregistered'] = fn;
+    }
+
     TwilioPlugin.install = function() {
         if (!window.Twilio) window.Twilio = {};
         if (!window.Twilio.TwilioVoiceClient) window.Twilio.TwilioVoiceClient = new TwilioPlugin.TwilioVoiceClient();
