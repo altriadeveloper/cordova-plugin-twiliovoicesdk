@@ -286,9 +286,10 @@ static NSString *const kTwimlParamTo = @"To";
     if (oldPushDeviceToken || ![oldPushDeviceToken isEqual:[NSNull null]]) {
         // we have an old push device token, let's unregister the old one first
         [self unregisterOldPushDevice: oldPushDeviceToken];
+    } else {
+        self.shouldRegisterForPush = true;
+        [self registerTwilioWithAccessToken];
     }
-    self.shouldRegisterForPush = true;
-    [self registerTwilioWithAccessToken];
 }
 
 - (void) unregisterOldPushDevice: (NSString*)oldPushDeviceToken {
@@ -300,6 +301,8 @@ static NSString *const kTwimlParamTo = @"To";
             } else {
                 NSLog(@"Unregistered Voice Client for VOIP Push");
             }
+            self.shouldRegisterForPush = true;
+            [self registerTwilioWithAccessToken];
         }];
     }
 }
