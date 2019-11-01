@@ -36,7 +36,12 @@
             </feature>
         </config-file>
 
-        <dependency id="phonegap-plugin-push"/>
+        <preference name="GOOGLE_SERVICES_VERSION" default="3.0.0"/>
+        <preference name="FIREBASE_CORE_VERSION" default="16.0.7"/>
+        <preference name="FCM_VERSION" default="10.2.1"/>
+        <preference name="VOICE_ANDROID_VERSION" default="2.0.7"/>
+
+        <dependency id="phonegap-plugin-push"/> <!-- uses $FCM_VERSION for "firebase-messaging" -->
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
             <!-- [START fcm_listener] -->
@@ -71,9 +76,9 @@
             <string name="incoming_call_app_name" translatable="false">$INCOMING_CALL_APP_NAME</string>
         </config-file>
         
-        <framework src="com.google.gms:google-services:3.0.0" />
-        <framework src="com.google.firebase:firebase-messaging:10.2.1" />
-        <framework src="com.twilio:voice-android:2.0.7"/>
+        <framework src="com.google.gms:google-services:$GOOGLE_SERVICES_VERSION" />
+        <framework src="com.google.firebase:firebase-messaging:$FCM_VERSION" />
+        <framework src="com.twilio:voice-android:$VOICE_ANDROID_VERSION"/>
 
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/TwilioVoicePlugin.java"
                 target-dir="src/com/phonegap/plugins/twiliovoice" />
