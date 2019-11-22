@@ -283,13 +283,13 @@ static NSString *const kTwimlParamTo = @"To";
 - (void) registerCurrentDeviceForPush: (CDVInvokedUrlCommand*)command {
     NSLog(@"Registering current device for push.");
     NSString* oldPushDeviceToken = [command.arguments objectAtIndex:0];
-    if (oldPushDeviceToken || ![oldPushDeviceToken isEqual:[NSNull null]]) {
+    if (oldPushDeviceToken != nil && oldPushDeviceToken != (id)[NSNull null]) {
         // we have an old push device token, let's unregister the old one first
         [self unregisterOldPushDevice: oldPushDeviceToken];
-    } else {
-        self.shouldRegisterForPush = true;
-        [self registerTwilioWithAccessToken];
     }
+    
+    self.shouldRegisterForPush = true;
+    [self registerTwilioWithAccessToken];
 }
 
 - (void) unregisterOldPushDevice: (NSString*)oldPushDeviceToken {
