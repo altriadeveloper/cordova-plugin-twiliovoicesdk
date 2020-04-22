@@ -1,14 +1,14 @@
 package com.phonegap.plugins.twiliovoice.fcm;
 
 import android.content.Intent;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.FirebaseInstanceIdService;
+import com.google.firebase.messaging.FirebaseMessagingService;
 import com.phonegap.plugins.twiliovoice.TwilioVoicePlugin;
 
-public class VoiceFirebaseInstanceIDService extends FirebaseInstanceIdService {
+public class VoiceFirebaseInstanceIDService extends FirebaseMessagingService {
 
     private static final String TAG = TwilioVoicePlugin.TAG;
 
@@ -18,7 +18,7 @@ public class VoiceFirebaseInstanceIDService extends FirebaseInstanceIdService {
      * is initially generated so this is where you would retrieve the token.
      */
     @Override
-    public void onTokenRefresh() {
+    public void onNewToken(String s) {
         // Get updated InstanceID token.
         String refreshedToken = FirebaseInstanceId.getInstance().getToken();
         Log.d(TAG, "Refreshed token: " + refreshedToken);
