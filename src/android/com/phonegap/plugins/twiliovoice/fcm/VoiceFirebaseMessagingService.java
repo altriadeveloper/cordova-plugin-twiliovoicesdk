@@ -13,8 +13,8 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.net.Uri;
 import android.service.notification.StatusBarNotification;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -52,6 +52,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
+        super.onMessageReceived(remoteMessage);
         Log.d(TAG, "Received onMessageReceived()");
         Log.d(TAG, "Bundle data: " + remoteMessage.getData());
         Log.d(TAG, "From: " + remoteMessage.getFrom());
@@ -60,18 +61,18 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
         if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
             final int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-            Voice.handleMessage(this, data, new MessageListener() {
-                @Override
-                public void onCallInvite(CallInvite callInvite) {
-                    VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
-                    VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
-                }
+          //  Voice.handleMessage(this, data, new MessageListener() {
+          //      @Override
+          //      public void onCallInvite(CallInvite callInvite) {
+          //          VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
+          //          VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
+          //      }
 
-                @Override
-                public void onError(MessageException messageException) {
-                    Log.e(TAG, messageException.getLocalizedMessage());
-                }
-            });
+          //      @Override
+          //      public void onError(MessageException messageException) {
+          //          Log.e(TAG, messageException.getLocalizedMessage());
+          //      }
+          //  });
         }
     }
 
