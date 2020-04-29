@@ -13,7 +13,10 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.net.Uri;
 import android.service.notification.StatusBarNotification;
+
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -30,19 +33,28 @@ import com.phonegap.plugins.twiliovoice.TwilioVoicePlugin;
 
 import java.util.Map;
 
+import capacitor.android.plugins.R;
+
 public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "VoiceFCMService";
     private static final String NOTIFICATION_ID_KEY = "NOTIFICATION_ID";
     private static final String CALL_SID_KEY = "CALL_SID";
     private static final String VOICE_CHANNEL = "default";
-
+    private static final String CHANNEL_ID = "iqosNotificationChannel";
     private NotificationManager notificationManager;
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onCreate() {
         super.onCreate();
+        CharSequence name = getString(R.string.fcm_fallback_notification_channel_label);
+        String description = "Channel Description";
+        int importance = NotificationManager.IMPORTANCE_DEFAULT;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+        channel.setDescription(description);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.createNotificationChannel(channel);
     }
 
     /**
@@ -52,27 +64,35 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        super.onMessageReceived(remoteMessage);
         Log.d(TAG, "Received onMessageReceived()");
         Log.d(TAG, "Bundle data: " + remoteMessage.getData());
         Log.d(TAG, "From: " + remoteMessage.getFrom());
+
+        // NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        //         .setSmallIcon(android.R.drawable.ic_notification_overlay)
+        //         .setContentTitle("Foo")
+        //         .setContentText("Bar")
+        //         .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        // NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        // notificationManager.notify(134234, builder.build());
 
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
             final int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-          //  Voice.handleMessage(this, data, new MessageListener() {
-          //      @Override
-          //      public void onCallInvite(CallInvite callInvite) {
-          //          VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
-          //          VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
-          //      }
+            Voice.handleMessage(this, data, new MessageListener() {
+                @Override
+                public void onCallInvite(CallInvite callInvite) {
+                    VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
+                    VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
+                }
 
-          //      @Override
-          //      public void onError(MessageException messageException) {
-          //          Log.e(TAG, messageException.getLocalizedMessage());
-          //      }
-          //  });
+                @Override
+                public void onError(MessageException messageException) {
+                    Log.e(TAG, messageException.getLocalizedMessage());
+                }
+            });
         }
     }
 
