@@ -42,6 +42,7 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * Twilio Voice Plugin for Cordova/PhoneGap
@@ -95,28 +96,30 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 	private boolean shouldRegisterForPush;
 	private boolean maskIncomingPhoneNumber;
 
-	private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action.equals(ACTION_SET_FCM_TOKEN)) {
-                String fcmToken = intent.getStringExtra(KEY_FCM_TOKEN);
-                Log.i(TAG, "FCM Token : " + fcmToken);
-                mFCMToken = fcmToken;
-                if(fcmToken == null) {
-                    javascriptErrorback(0, "Did not receive GCM Token - unable to receive calls", mInitCallbackContext);
-                }
-                if (mFCMToken != null) {
-                    register();
-                }
-            } else if (action.equals(ACTION_INCOMING_CALL)) {
-                /*
-                 * Handle the incoming call invite
-                 */
-                handleIncomingCallIntent(intent);
-            }
-		}
-	};
+	private VoiceBroadcastReceiver mVoiceBroadcastReceiver;
+
+//	= new BroadcastReceiver() {
+//		@Override
+//		public void onReceive(Context context, Intent intent) {
+//            String action = intent.getAction();
+//            if (action.equals(ACTION_SET_FCM_TOKEN)) {
+//                String fcmToken = intent.getStringExtra(KEY_FCM_TOKEN);
+//                Log.i(TAG, "FCM Token : " + fcmToken);
+//                mFCMToken = fcmToken;
+//                if(fcmToken == null) {
+//                    javascriptErrorback(0, "Did not receive GCM Token - unable to receive calls", mInitCallbackContext);
+//                }
+//                if (mFCMToken != null) {
+//                    register();
+//                }
+//            } else if (action.equals(ACTION_INCOMING_CALL)) {
+//                /*
+//                 * Handle the incoming call invite
+//                 */
+//                handleIncomingCallIntent(intent);
+//            }
+//		}
+//	};
 
 	// Twilio Voice Registration Listener
 	private RegistrationListener mRegistrationListener = new RegistrationListener() {
@@ -191,7 +194,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
         // initialize sound SoundPoolManager
         SoundPoolManager.getInstance(cordova.getActivity());
-		
+
+        mVoiceBroadcastReceiver = new VoiceBroadcastReceiver();
+
 		Context context = cordova.getActivity().getApplicationContext();
 		audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 
@@ -200,6 +205,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		if (intent.getAction().equals(ACTION_INCOMING_CALL)) {
 			mIncomingCallIntent = intent;
 		}
+
 	}
 
 	public void initializeWithAccessTokenAndShouldRegisterForPush(JSONArray arguments, CallbackContext context) throws JSONException {
@@ -218,14 +224,18 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		intentFilter.addAction(ACTION_SET_FCM_TOKEN);
 		intentFilter.addAction(ACTION_INCOMING_CALL);
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(cordova.getActivity());
-		lbm.registerReceiver(mBroadcastReceiver, intentFilter);
+		lbm.registerReceiver(mVoiceBroadcastReceiver, intentFilter);
 
 		if (mIncomingCallIntent != null) {
 			Log.d(TAG, "initialize(): Handle an incoming call");
 			handleIncomingCallIntent(mIncomingCallIntent);
 			mIncomingCallIntent = null;
 		}
-
+		// this.register();
+		FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener((Executor) this, instanceIdResult -> {
+			String fcmToken = instanceIdResult.getToken();
+			Voice.register(mAccessToken, Voice.RegistrationChannel.FCM, fcmToken, mRegistrationListener);
+		});
 		javascriptCallback("onclientinitialized",mInitCallbackContext);
 
 		return true;
@@ -259,9 +269,8 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 	 * @return Whether the action was valid.
 	 */
 	@Override
-	public boolean execute(final String action, final JSONArray args,
-			final CallbackContext callbackContext) throws JSONException {
-		if ("initializeWithAccessTokenAnd".equals(action)) {
+	public boolean execute(final String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
+		if ("initializeWithAccessTokenAndShouldRegisterForPush".equals(action)) {
 			this.initializeWithAccessTokenAndShouldRegisterForPush(args, callbackContext);
 		}
 		else if ("initializeWithAccessToken".equals(action)) {
@@ -526,8 +535,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     }
 
 	// Plugin-to-Javascript communication methods
-	private void javascriptCallback(String event, JSONObject arguments,
-			CallbackContext callbackContext) {
+	private void javascriptCallback(String event, JSONObject arguments,	CallbackContext callbackContext) {
 		if (callbackContext == null) {
 			return;
 		}
@@ -546,8 +554,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
 	}
 
-	private void javascriptCallback(String event,
-			CallbackContext callbackContext) {
+	private void javascriptCallback(String event, CallbackContext callbackContext) {
 		javascriptCallback(event, null, callbackContext);
 	}
 
@@ -577,7 +584,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		//lifecycle events
         SoundPoolManager.getInstance(cordova.getActivity()).release();
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(cordova.getActivity());
-		lbm.unregisterReceiver(mBroadcastReceiver);
+		lbm.unregisterReceiver(mVoiceBroadcastReceiver);
         super.onDestroy();
 	}
 
@@ -682,4 +689,13 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		return json;
 	}
 
+	private class VoiceBroadcastReceiver extends BroadcastReceiver {
+    	@Override
+		public void onReceive(Context context, Intent intent) {
+    		String action = intent.getAction();
+    		if (action != null && (action.equals(Constants.ACTION_INCOMING_CALL) || action.equals(Constants.ACTION_CANCEL_CALL))) {
+    			handleIncomingCallIntent(intent);
+			}
+		}
+	}
 }

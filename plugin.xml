@@ -76,6 +76,7 @@
                 target-dir="src/com/phonegap/plugins/twiliovoice" />
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/SoundPoolManager.java"
                 target-dir="src/com/phonegap/plugins/twiliovoice" />
+				<source-file src="src/android/com/phonegap/plugins/twiliovoice/Constants.java" target-dir="src/com/phonegap/plugins/twiliovoice" />
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/fcm/VoiceFirebaseInstanceIDService.java"
                 target-dir="src/com/phonegap/plugins/twiliovoice/fcm" />
         <source-file src="src/android/com/phonegap/plugins/twiliovoice/fcm/VoiceFirebaseMessagingService.java"
