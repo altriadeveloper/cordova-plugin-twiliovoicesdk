@@ -28,6 +28,7 @@ import com.twilio.voice.CallInvite;
 import com.twilio.voice.LogLevel;
 import com.twilio.voice.RegistrationException;
 import com.twilio.voice.RegistrationListener;
+import com.twilio.voice.UnregistrationListener;
 import com.twilio.voice.Voice;
 
 import org.apache.cordova.CallbackContext;
@@ -98,34 +99,12 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
     private VoiceBroadcastReceiver mVoiceBroadcastReceiver;
 
-//	= new BroadcastReceiver() {
-//		@Override
-//		public void onReceive(Context context, Intent intent) {
-//            String action = intent.getAction();
-//            if (action.equals(ACTION_SET_FCM_TOKEN)) {
-//                String fcmToken = intent.getStringExtra(KEY_FCM_TOKEN);
-//                Log.i(TAG, "FCM Token : " + fcmToken);
-//                mFCMToken = fcmToken;
-//                if(fcmToken == null) {
-//                    javascriptErrorback(0, "Did not receive GCM Token - unable to receive calls", mInitCallbackContext);
-//                }
-//                if (mFCMToken != null) {
-//                    register();
-//                }
-//            } else if (action.equals(ACTION_INCOMING_CALL)) {
-//                /*
-//                 * Handle the incoming call invite
-//                 */
-//                handleIncomingCallIntent(intent);
-//            }
-//		}
-//	};
-
     // Twilio Voice Registration Listener
     private RegistrationListener mRegistrationListener = new RegistrationListener() {
         @Override
         public void onRegistered(String accessToken, String fcmToken) {
             Log.d(TAG, "Registered Voice Client");
+            mFCMToken = fcmToken;
         }
 
         @Override
@@ -180,7 +159,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
         @Override
         public void onRinging(@NonNull Call call) {
-
+            mCall = call;
         }
     };
 
@@ -234,11 +213,37 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         // this.register();
         FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(cordova.getActivity(), instanceIdResult -> {
             String fcmToken = instanceIdResult.getToken();
+            mFCMToken = fcmToken;
             Voice.register(mAccessToken, Voice.RegistrationChannel.FCM, fcmToken, mRegistrationListener);
         });
         javascriptCallback("onclientinitialized", mInitCallbackContext);
 
         return true;
+    }
+
+    public void registerCurrentDeviceForPush(JSONArray args, CallbackContext context) throws JSONException {
+        String oldPushDeviceToken = args.getString(0);
+        if (oldPushDeviceToken != null ) {
+            this.unregisterOldPushDevice(oldPushDeviceToken);
+        }
+        this.shouldRegisterForPush = true;
+        Voice.register(mAccessToken, Voice.RegistrationChannel.FCM, mFCMToken, mRegistrationListener);
+    }
+
+    public void unregisterOldPushDevice(String oldPushDeviceToken) {
+        if (mAccessToken != null && oldPushDeviceToken != null) {
+            Voice.unregister(mAccessToken, Voice.RegistrationChannel.FCM, oldPushDeviceToken, new UnregistrationListener() {
+                @Override
+                public void onUnregistered(String accessToken, String fcmToken) {
+                    Log.d(TAG, "UnregisterOldPushDevice OnUnregistered");
+                }
+
+                @Override
+                public void onError(RegistrationException registrationException, String accessToken, String fcmToken) {
+                    Log.d(TAG, "UnregisterOldPushDevice OnError" + registrationException.getMessage());
+                }
+            });
+        }
     }
 
     @Override
@@ -306,6 +311,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             return true;
         } else if ("setSpeaker".equals(action)) {
             setSpeaker(args, callbackContext);
+            return true;
+        } else if ("registerCurrentDeviceForPush".equals(action)) {
+            registerCurrentDeviceForPush(args, callbackContext);
             return true;
         }
 
