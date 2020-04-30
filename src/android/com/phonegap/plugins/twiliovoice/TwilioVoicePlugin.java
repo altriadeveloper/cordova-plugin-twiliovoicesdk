@@ -14,6 +14,8 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
@@ -22,7 +24,6 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.twilio.voice.Call;
 import com.twilio.voice.CallException;
 import com.twilio.voice.CallInvite;
-import com.twilio.voice.CallState;
 import com.twilio.voice.LogLevel;
 import com.twilio.voice.RegistrationException;
 import com.twilio.voice.RegistrationListener;
@@ -142,13 +143,22 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 				callProperties.putOpt("to", call.getTo());
 				callProperties.putOpt("callSid", call.getSid());
 				callProperties.putOpt("isMuted", call.isMuted());
-				String callState = getCallState(call.getState());
-				callProperties.putOpt("state", callState);
+				callProperties.putOpt("state", call.getState());
 				setAudioFocus(true);
 			} catch (JSONException e) {
 				Log.e(TAG,e.getMessage(),e);
 			}
 			javascriptCallback("oncalldidconnect", callProperties,mInitCallbackContext);
+		}
+
+		@Override
+		public void onReconnecting(@NonNull Call call, @NonNull CallException callException) {
+
+		}
+
+		@Override
+		public void onReconnected(@NonNull Call call) {
+
 		}
 
 		@Override
@@ -163,6 +173,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 			mCall = null;
 			setAudioFocus(false);
 			javascriptErrorback(exception.getErrorCode(), exception.getMessage(), mInitCallbackContext);
+		}
+
+		@Override
+		public void onRinging(@NonNull Call call) {
+
 		}
 	};
 
@@ -298,10 +313,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 				String accessToken = arguments.optString(0, mAccessToken);
 				JSONObject options = arguments.optJSONObject(1);
 				Map<String, String> map = getMap(options);
-				if (mCall != null && mCall.getState().equals(CallState.CONNECTED)) {
+				if (mCall != null && mCall.getState().equals(Call.State.CONNECTED)) {
 					mCall.disconnect();
 				}
-				mCall = Voice.call(cordova.getActivity(), accessToken, map, mCallListener);
+				mCall = Voice.connect(cordova.getActivity().getBaseContext(), accessToken, mCallListener);
 				Log.d(TAG, "Placing call with params: " + map.toString());
 			}
 		});
@@ -411,7 +426,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 					PluginResult.Status.ERROR));
 			return;
 		}
-		String state = getCallState(mCall.getState());
+		String state = this.getCallState(mCall.getState());
 		if (state == null) {
 			state = "";
 		}
@@ -452,7 +467,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 	/**
 	 * 	Changes sound from earpiece to speaker and back
 	 * 
-	 * 	@param mode	Speaker Mode
+	 *
 	 * */
 	public void setSpeaker(final JSONArray arguments, final CallbackContext callbackContext) {
 		cordova.getThreadPool().execute(new Runnable(){
@@ -583,7 +598,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
      * Register your FCM token with Twilio to enable receiving incoming calls via FCM
      */
     private void register() {
-        Voice.register(cordova.getActivity().getApplicationContext(), mAccessToken,  Voice.RegistrationChannel.FCM, mFCMToken, mRegistrationListener);
+        Voice.register(mAccessToken,  Voice.RegistrationChannel.FCM, mFCMToken, mRegistrationListener);
 	}
 	
     // Process incoming call invites
@@ -591,7 +606,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         Log.d(TAG, "handleIncomingCallIntent()");
         if (intent != null && intent.getAction() != null && intent.getAction().equals(ACTION_INCOMING_CALL)) {
             mCallInvite = intent.getParcelableExtra(INCOMING_CALL_INVITE);
-            if (mCallInvite != null && (mCallInvite.getState() == CallInvite.State.PENDING)) {
+
                 SoundPoolManager.getInstance(cordova.getActivity()).playRinging();
                 NotificationManager mNotifyMgr = 
 		        (NotificationManager) cordova.getActivity().getSystemService(Activity.NOTIFICATION_SERVICE);
@@ -601,45 +616,41 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                     callInviteProperties.putOpt("from", mCallInvite.getFrom());
                     callInviteProperties.putOpt("to", mCallInvite.getTo());
                     callInviteProperties.putOpt("callSid", mCallInvite.getCallSid());
-                    String callInviteState = getCallInviteState(mCallInvite.getState());
-                    callInviteProperties.putOpt("state", callInviteState);
+//                    String callInviteState = getCallInviteState(mCallInvite.getState());
+//                    callInviteProperties.putOpt("state", callInviteState);
                 } catch (JSONException e) {
                     Log.e(TAG,e.getMessage(),e);
                 }
 				Log.d(TAG,"oncallinvitereceived");
                 javascriptCallback("oncallinvitereceived", callInviteProperties, mInitCallbackContext); 
-            } else {
-                SoundPoolManager.getInstance(cordova.getActivity()).stopRinging();
-				Log.d(TAG,"oncallinvitecanceled");
-                javascriptCallback("oncallinvitecanceled",mInitCallbackContext); 
-            }
+
         }
     }
 
-	private String getCallState(CallState callState) {
-		if (callState == CallState.CONNECTED) {
+	private String getCallState(Call.State callState) {
+		if (callState == Call.State.CONNECTED) {
 			return "connected";
-		} else if (callState == CallState.CONNECTING) {
+		} else if (callState == Call.State.CONNECTING) {
 			return "connecting";
-		} else if (callState == CallState.DISCONNECTED) {
+		} else if (callState == Call.State.DISCONNECTED) {
 			return "disconnected";
 		}
 		return null;
 	}
 
-	private String getCallInviteState(CallInvite.State state) {
-		if (state == CallInvite.State.PENDING) {
-			return "pending";
-		} else if (state == CallInvite.State.ACCEPTED) {
-			return "accepted";
-		} else if (state == CallInvite.State.REJECTED) {
-			return "rejected";
-		} else if (state == CallInvite.State.CANCELED) {
-			return "cancelled";
-		}
-
-		return null;
-	}
+//	private String getCallInviteState(CallInvite.State state) {
+//		if (state == CallInvite.State.PENDING) {
+//			return "pending";
+//		} else if (state == CallInvite.State.ACCEPTED) {
+//			return "accepted";
+//		} else if (state == CallInvite.State.REJECTED) {
+//			return "rejected";
+//		} else if (state == CallInvite.State.CANCELED) {
+//			return "cancelled";
+//		}
+//
+//		return null;
+//	}
 
 	// helper method to get a map of strings from a JSONObject
 	public Map<String, String> getMap(JSONObject object) {
