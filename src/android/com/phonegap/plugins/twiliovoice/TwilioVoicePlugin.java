@@ -14,8 +14,8 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
@@ -23,6 +23,7 @@ import com.twilio.voice.Call;
 import com.twilio.voice.CallException;
 import com.twilio.voice.CallInvite;
 import com.twilio.voice.CallState;
+import com.twilio.voice.LogLevel;
 import com.twilio.voice.RegistrationException;
 import com.twilio.voice.RegistrationListener;
 import com.twilio.voice.Voice;
@@ -88,6 +89,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
 	private AudioManager audioManager;
 	private int savedAudioMode = AudioManager.MODE_INVALID;
+
+	// Custom Implementation Properties
+	private boolean shouldRegisterForPush;
+	private boolean maskIncomingPhoneNumber;
 
 	private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -166,6 +171,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		super.initialize(cordova, webView);
 		Log.d(TAG, "initialize()");
 
+		Voice.setLogLevel(LogLevel.ALL);
+
+
         // initialize sound SoundPoolManager
         SoundPoolManager.getInstance(cordova.getActivity());
 		
@@ -177,6 +185,35 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 		if (intent.getAction().equals(ACTION_INCOMING_CALL)) {
 			mIncomingCallIntent = intent;
 		}
+	}
+
+	public void initializeWithAccessTokenAndShouldRegisterForPush(JSONArray arguments, CallbackContext context) throws JSONException {
+		this.shouldRegisterForPush = arguments.getBoolean(1);
+		this.initializeWithAccessToken(arguments, context);
+	}
+
+	public boolean initializeWithAccessToken(JSONArray arguments, CallbackContext context) {
+		Log.d(TAG, "Initializing with Access Token");
+
+		mAccessToken = arguments.optString(0);
+
+		mInitCallbackContext = context;
+
+		IntentFilter intentFilter = new IntentFilter();
+		intentFilter.addAction(ACTION_SET_FCM_TOKEN);
+		intentFilter.addAction(ACTION_INCOMING_CALL);
+		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(cordova.getActivity());
+		lbm.registerReceiver(mBroadcastReceiver, intentFilter);
+
+		if (mIncomingCallIntent != null) {
+			Log.d(TAG, "initialize(): Handle an incoming call");
+			handleIncomingCallIntent(mIncomingCallIntent);
+			mIncomingCallIntent = null;
+		}
+
+		javascriptCallback("onclientinitialized",mInitCallbackContext);
+
+		return true;
 	}
 
 	@Override
@@ -209,29 +246,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 	@Override
 	public boolean execute(final String action, final JSONArray args,
 			final CallbackContext callbackContext) throws JSONException {
-		if ("initializeWithAccessToken".equals(action)) {
-            Log.d(TAG, "Initializing with Access Token");
-
-			mAccessToken = args.optString(0);
-
-			mInitCallbackContext = callbackContext;
-
-            IntentFilter intentFilter = new IntentFilter();
-            intentFilter.addAction(ACTION_SET_FCM_TOKEN);
-            intentFilter.addAction(ACTION_INCOMING_CALL);
-            LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(cordova.getActivity());
-            lbm.registerReceiver(mBroadcastReceiver, intentFilter);
-
-			if (mIncomingCallIntent != null) {
-				Log.d(TAG, "initialize(): Handle an incoming call");
-			 	handleIncomingCallIntent(mIncomingCallIntent);
-				mIncomingCallIntent = null;
-			}
-
-			javascriptCallback("onclientinitialized",mInitCallbackContext);
-
-			return true;
-
+		if ("initializeWithAccessTokenAnd".equals(action)) {
+			this.initializeWithAccessTokenAndShouldRegisterForPush(args, callbackContext);
+		}
+		else if ("initializeWithAccessToken".equals(action)) {
+            this.initializeWithAccessToken(args, callbackContext);
 		} else if ("call".equals(action)) {
 			call(args, callbackContext);
 			return true;
