@@ -1,24 +1,8 @@
-package com.phonegap.plugins.twiliovoice.fcm;
+package com.twilio.voice.quickstart.fcm;
 
-import android.annotation.TargetApi;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.PowerManager;
-import android.net.Uri;
-import android.service.notification.StatusBarNotification;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
@@ -27,40 +11,19 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.twilio.voice.CallException;
 import com.twilio.voice.CallInvite;
-//import com.twilio.voice.MessageException;
 import com.twilio.voice.CancelledCallInvite;
 import com.twilio.voice.MessageListener;
 import com.twilio.voice.Voice;
-
-import static android.R.attr.data;
-
-import com.phonegap.plugins.twiliovoice.SoundPoolManager;
-import com.phonegap.plugins.twiliovoice.TwilioVoicePlugin;
-
-import java.util.Map;
-
-import capacitor.android.plugins.R;
+import com.twilio.voice.quickstart.Constants;
+import com.twilio.voice.quickstart.IncomingCallNotificationService;
 
 public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "VoiceFCMService";
-    private static final String NOTIFICATION_ID_KEY = "NOTIFICATION_ID";
-    private static final String CALL_SID_KEY = "CALL_SID";
-    private static final String VOICE_CHANNEL = "default";
-    private static final String CHANNEL_ID = "iqosNotificationChannel";
-    private NotificationManager notificationManager;
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onCreate() {
         super.onCreate();
-        CharSequence name = getString(R.string.fcm_fallback_notification_channel_label);
-        String description = "Channel Description";
-        int importance = NotificationManager.IMPORTANCE_DEFAULT;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-        channel.setDescription(description);
-        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.createNotificationChannel(channel);
     }
 
     /**
@@ -74,159 +37,49 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
         Log.d(TAG, "Bundle data: " + remoteMessage.getData());
         Log.d(TAG, "From: " + remoteMessage.getFrom());
 
-        // NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-        //         .setSmallIcon(android.R.drawable.ic_notification_overlay)
-        //         .setContentTitle("Foo")
-        //         .setContentText("Bar")
-        //         .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-        // NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        // notificationManager.notify(134234, builder.build());
-
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
-            Map<String, String> data = remoteMessage.getData();
-            final int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-            Voice.handleMessage(this, data, new MessageListener() {
+            boolean valid = Voice.handleMessage(this, remoteMessage.getData(), new MessageListener() {
                 @Override
-                public void onCallInvite(CallInvite callInvite) {
-                    VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
-                    VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
+                public void onCallInvite(@NonNull CallInvite callInvite) {
+                    final int notificationId = (int) System.currentTimeMillis();
+                    handleInvite(callInvite, notificationId);
                 }
 
                 @Override
                 public void onCancelledCallInvite(@NonNull CancelledCallInvite cancelledCallInvite, @Nullable CallException callException) {
-                    VoiceFirebaseMessagingService.this.notifyCancel(cancelledCallInvite, notificationId);
+                    handleCanceledCallInvite(cancelledCallInvite);
                 }
             });
-        }
-    }
 
-    private void notify(CallInvite callInvite, int notificationId) {
-        String callSid = callInvite.getCallSid();
-        Notification notification = null;
-
-
-        Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
-        intent.setAction(TwilioVoicePlugin.ACTION_INCOMING_CALL);
-        intent.putExtra(TwilioVoicePlugin.INCOMING_CALL_NOTIFICATION_ID, notificationId);
-        intent.putExtra(TwilioVoicePlugin.INCOMING_CALL_INVITE, callInvite);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent =
-                PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-        /*
-         * Pass the notification id and call sid to use as an identifier to cancel the
-         * notification later
-         */
-        Bundle extras = new Bundle();
-        extras.putInt(NOTIFICATION_ID_KEY, notificationId);
-        extras.putString(CALL_SID_KEY, callSid);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel callInviteChannel = new NotificationChannel(VOICE_CHANNEL,
-                    "Primary Voice Channel", NotificationManager.IMPORTANCE_DEFAULT);
-            callInviteChannel.setLightColor(Color.RED);
-            callInviteChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-            notificationManager.createNotificationChannel(callInviteChannel);
-
-            notification = buildNotification(callInvite.getFrom() + " is calling", pendingIntent, extras);
-            notificationManager.notify(notificationId, notification);
-        } else {
-            int iconIdentifier = getResources().getIdentifier("icon", "mipmap", getPackageName());
-            int incomingCallAppNameId = (int) getResources().getIdentifier("incoming_call_app_name", "string", getPackageName());
-            String contentTitle = getString(incomingCallAppNameId);
-
-            if (contentTitle == null) {
-                contentTitle = "Incoming Call";
+            if (!valid) {
+                Log.e(TAG, "The message was not a valid Twilio Voice SDK payload: " +
+                        remoteMessage.getData());
             }
-            final String from = callInvite.getFrom() + " is calling";
-
-            NotificationCompat.Builder notificationBuilder =
-                    new NotificationCompat.Builder(this)
-                            .setSmallIcon(iconIdentifier)
-                            .setContentTitle(contentTitle)
-                            .setContentText(from)
-                            .setAutoCancel(true)
-                            .setExtras(extras)
-                            .setContentIntent(pendingIntent)
-                            .setGroup("voice_app_notification")
-                            .setColor(Color.rgb(225, 0, 0));
-
-            notificationManager.notify(notificationId, notificationBuilder.build());
-
-        }
-
-    }
-
-    private void notifyCancel(CancelledCallInvite cancelledCallInvite, int notificationId) {
-        Notification notification = null;
-
-        SoundPoolManager.getInstance(this).stopRinging();
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            /*
-             * If the incoming call was cancelled then remove the notification by matching
-             * it with the call sid from the list of notifications in the notification drawer.
-             */
-            StatusBarNotification[] activeNotifications = notificationManager.getActiveNotifications();
-            for (StatusBarNotification statusBarNotification : activeNotifications) {
-                notification = statusBarNotification.getNotification();
-                Bundle extras = notification.extras;
-                String notificationCallSid = extras.getString(CALL_SID_KEY);
-
-                if (cancelledCallInvite.getCallSid().equals(notificationCallSid)) {
-                    notificationManager.cancel(extras.getInt(NOTIFICATION_ID_KEY));
-                } else {
-//                    sendCallInviteToPlugin(callInvite, notificationId);
-                }
-            }
-        } else {
-            /*
-             * Prior to Android M the notification manager did not provide a list of
-             * active notifications so we lazily clear all the notifications when
-             * receiving a cancelled call.
-             *
-             * In order to properly cancel a notification using
-             * NotificationManager.cancel(notificationId) we should store the call sid &
-             * notification id of any incoming calls using shared preferences or some other form
-             * of persistent storage.
-             */
-            notificationManager.cancelAll();
         }
     }
 
-
-    /**
-     * Build a notification.
-     *
-     * @param text          the text of the notification
-     * @param pendingIntent the body, pending intent for the notification
-     * @param extras        extras passed with the notification
-     * @return the builder
-     */
-    @TargetApi(Build.VERSION_CODES.O)
-    public Notification buildNotification(String text, PendingIntent pendingIntent, Bundle extras) {
-        int iconIdentifier = getResources().getIdentifier("icon", "mipmap", getPackageName());
-        int incomingCallAppNameId = getResources().getIdentifier("incoming_call_app_name", "string", getPackageName());
-        String contentTitle = getString(incomingCallAppNameId);
-        return new Notification.Builder(getApplicationContext(), VOICE_CHANNEL)
-                .setSmallIcon(iconIdentifier)
-                .setContentTitle(contentTitle)
-                .setContentText(text)
-                .setContentIntent(pendingIntent)
-                .setExtras(extras)
-                .setAutoCancel(true)
-                .build();
-    }
-
-    /*
-     * Send the IncomingCallMessage to the Plugin
-     */
-    private void sendCallInviteToPlugin(CallInvite incomingCallMessage, int notificationId) {
-        Intent intent = new Intent(TwilioVoicePlugin.ACTION_INCOMING_CALL);
-        intent.putExtra(TwilioVoicePlugin.INCOMING_CALL_INVITE, incomingCallMessage);
-        intent.putExtra(TwilioVoicePlugin.INCOMING_CALL_NOTIFICATION_ID, notificationId);
-        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    @Override
+    public void onNewToken(String token) {
+        super.onNewToken(token);
+        Intent intent = new Intent(Constants.ACTION_FCM_TOKEN);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
+    private void handleInvite(CallInvite callInvite, int notificationId) {
+        Intent intent = new Intent(this, IncomingCallNotificationService.class);
+        intent.setAction(Constants.ACTION_INCOMING_CALL);
+        intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
+        intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+
+        startService(intent);
+    }
+
+    private void handleCanceledCallInvite(CancelledCallInvite cancelledCallInvite) {
+        Intent intent = new Intent(this, IncomingCallNotificationService.class);
+        intent.setAction(Constants.ACTION_CANCEL_CALL);
+        intent.putExtra(Constants.CANCELLED_CALL_INVITE, cancelledCallInvite);
+
+        startService(intent);
+    }
 }
