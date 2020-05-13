@@ -31,16 +31,19 @@
     <platform name="android">
 				<framework src="com.google.gms:google-services:4.3.3" />
         <framework src="com.google.firebase:firebase-messaging:20.1.5" />
+				<framework src="androidx.lifecycle:lifecycle-extensions:2.1.0" />
         <framework src="com.twilio:voice-android:5.2.0"/>
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="TwilioVoicePlugin">
                 <param name="android-package" value="com.phonegap.plugins.twiliovoice.TwilioVoicePlugin"/>
+								<param name="onload" value="true" />
             </feature>
         </config-file>
 				<config-file target="res/xml/config.xml" parent="/widget">
            <feature name="TwilioVoicePlugin">
               <param name="android-package" value="com.phonegap.plugins.twiliovoice.TwilioVoicePlugin"/>
+							<param name="onload" value="true" />
             </feature>
         </config-file>
 

@@ -1,9 +1,11 @@
-package com.twilio.voice.quickstart;
+package com.phonegap.plugins.twiliovoice;
 
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Build;
+
+import capacitor.android.plugins.R;
 
 import static android.content.Context.AUDIO_SERVICE;
 
@@ -47,8 +49,9 @@ public class SoundPoolManager {
             }
 
         });
-        ringingSoundId = soundPool.load(context, R.raw.incoming, 1);
-        disconnectSoundId = soundPool.load(context, R.raw.disconnect, 1);
+
+        ringingSoundId = soundPool.load(context, R.raw.ringing, 1);
+        disconnectSoundId = soundPool.load(context, R.raw.ringing, 1);
     }
 
     public static SoundPoolManager getInstance(Context context) {

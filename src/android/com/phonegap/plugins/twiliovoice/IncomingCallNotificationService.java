@@ -1,4 +1,4 @@
-package com.twilio.voice.quickstart;
+package com.phonegap.plugins.twiliovoice;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,6 +22,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.twilio.voice.CallInvite;
 
+import capacitor.android.plugins.R;
+
 public class IncomingCallNotificationService extends Service {
 
     private static final String TAG = IncomingCallNotificationService.class.getSimpleName();
@@ -28,7 +31,7 @@ public class IncomingCallNotificationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
-
+        Log.v(TAG, "onStartCommand " + action);
         if (action != null) {
             CallInvite callInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
             int notificationId = intent.getIntExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, 0);
@@ -58,8 +61,8 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private Notification createNotification(CallInvite callInvite, int notificationId, int channelImportance) {
-        Intent intent = new Intent(this, VoiceActivity.class);
-        intent.setAction(Constants.ACTION_INCOMING_CALL_NOTIFICATION);
+        Log.v(TAG, "createNotification");
+        Intent intent = new Intent(Constants.ACTION_INCOMING_CALL_NOTIFICATION);
         intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
         intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -106,6 +109,7 @@ public class IncomingCallNotificationService extends Service {
                                           final CallInvite callInvite,
                                           int notificationId,
                                           String channelId) {
+        Log.v(TAG, "buildNotification " + text);
         Intent rejectIntent = new Intent(getApplicationContext(), IncomingCallNotificationService.class);
         rejectIntent.setAction(Constants.ACTION_REJECT);
         rejectIntent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
@@ -136,6 +140,7 @@ public class IncomingCallNotificationService extends Service {
 
     @TargetApi(Build.VERSION_CODES.O)
     private String createChannel(int channelImportance) {
+        Log.v(TAG, "createChannel");
         NotificationChannel callInviteChannel = new NotificationChannel(Constants.VOICE_CHANNEL_HIGH_IMPORTANCE,
                 "Primary Voice Channel", NotificationManager.IMPORTANCE_HIGH);
         String channelId = Constants.VOICE_CHANNEL_HIGH_IMPORTANCE;
@@ -154,27 +159,31 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private void accept(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "Accept");
         endForeground();
-        Intent activeCallIntent = new Intent(this, VoiceActivity.class);
-        activeCallIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        activeCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        activeCallIntent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
-        activeCallIntent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
-        activeCallIntent.setAction(Constants.ACTION_ACCEPT);
-        startActivity(activeCallIntent);
+//        Intent activeCallIntent = new Intent(this, VoiceActivity.class);
+//        activeCallIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+//        activeCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//        activeCallIntent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+//        activeCallIntent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
+//        activeCallIntent.setAction(Constants.ACTION_ACCEPT);
+//        startActivity(activeCallIntent);
     }
 
     private void reject(CallInvite callInvite) {
+        Log.v(TAG, "Reject");
         endForeground();
         callInvite.reject(getApplicationContext());
     }
 
     private void handleCancelledCall(Intent intent) {
+        Log.v(TAG, "handleCancelledCall");
         endForeground();
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     private void handleIncomingCall(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "handleIncomingCall");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             setCallInProgressNotification(callInvite, notificationId);
         }
@@ -187,6 +196,7 @@ public class IncomingCallNotificationService extends Service {
 
     @TargetApi(Build.VERSION_CODES.O)
     private void setCallInProgressNotification(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "SetCallInProgressNotification");
         if (isAppVisible()) {
             Log.i(TAG, "setCallInProgressNotification - app is visible.");
             startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_LOW));
@@ -200,10 +210,11 @@ public class IncomingCallNotificationService extends Service {
      * Send the CallInvite to the VoiceActivity. Start the activity if it is not running already.
      */
     private void sendCallInviteToActivity(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "sendCallInviteToActivity");
         if (Build.VERSION.SDK_INT >= 29 && !isAppVisible()) {
             return;
         }
-        Intent intent = new Intent(this, VoiceActivity.class);
+        Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         intent.setAction(Constants.ACTION_INCOMING_CALL);
         intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
         intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
