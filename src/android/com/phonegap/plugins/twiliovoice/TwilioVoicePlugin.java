@@ -607,6 +607,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         if (activeCallInvite != null) {
             alertDialog = createIncomingCallDialog(webviewContext,
                     activeCallInvite,
+                    mainActivity.getResources().getIdentifier("ic_launcher", "mipmap", mainActivity.getPackageName()),
                     answerCallClickListener(),
                     cancelCallClickListener());
             alertDialog.show();
@@ -616,10 +617,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     public static AlertDialog createIncomingCallDialog(
             Context context,
             CallInvite callInvite,
+            int iconIdentifier,
             DialogInterface.OnClickListener answerCallClickListener,
             DialogInterface.OnClickListener cancelClickListener) {
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
-        alertDialogBuilder.setIcon(R.drawable.ic_call_black_24dp);
+        alertDialogBuilder.setIcon(iconIdentifier);
         alertDialogBuilder.setTitle("Incoming Call");
         alertDialogBuilder.setPositiveButton("Accept", answerCallClickListener);
         alertDialogBuilder.setNegativeButton("Reject", cancelClickListener);

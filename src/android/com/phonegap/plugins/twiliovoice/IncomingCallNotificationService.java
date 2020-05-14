@@ -72,7 +72,7 @@ public class IncomingCallNotificationService extends Service {
 
         Notification.Builder builder =
                 new Notification.Builder(getApplicationContext(), channelId)
-                        .setSmallIcon(R.drawable.ic_call_end_white_24dp)
+                        .setSmallIcon(getResources().getIdentifier("ic_launcher", "mipmap", getPackageName()))
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText(text)
                         .setCategory(Notification.CATEGORY_CALL)
