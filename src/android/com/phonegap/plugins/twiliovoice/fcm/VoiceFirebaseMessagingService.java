@@ -61,14 +61,11 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                 @Override
                 public void onCallInvite(@NonNull CallInvite callInvite) {
                     final int notificationId = (int) System.currentTimeMillis();
-                    VoiceFirebaseMessagingService.this.notify(callInvite, notificationId);
-                    VoiceFirebaseMessagingService.this.sendCallInviteToPlugin(callInvite, notificationId);
                     VoiceFirebaseMessagingService.this.handleInvite(callInvite, notificationId);
                 }
 
                 @Override
                 public void onCancelledCallInvite(@NonNull CancelledCallInvite cancelledCallInvite, @Nullable CallException callException) {
-                    VoiceFirebaseMessagingService.this.sendCancelCallInviteToPlugin(cancelledCallInvite);
                     VoiceFirebaseMessagingService.this.handleCanceledCallInvite(cancelledCallInvite);
                 }
             });
@@ -156,22 +153,6 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                 .setExtras(extras)
                 .setAutoCancel(true)
                 .build();
-    }
-
-    private void sendCallInviteToPlugin(CallInvite incomingCallMessage, int notificationId) {
-        Log.v(TAG, "sendCallInviteToPlugin");
-        Intent intent = new Intent(Constants.ACTION_INCOMING_CALL);
-        intent.putExtra(Constants.INCOMING_CALL_INVITE, incomingCallMessage);
-        intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
-        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }
-
-    private void sendCancelCallInviteToPlugin(CancelledCallInvite cancelledCallInvite) {
-        Log.v(TAG, "sendCancelCallInviteToPlugin");
-        Intent intent = new Intent(Constants.ACTION_CANCEL_CALL);
-        intent.putExtra(Constants.CANCELLED_CALL_INVITE, cancelledCallInvite);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     private void handleInvite(CallInvite callInvite, int notificationId) {
