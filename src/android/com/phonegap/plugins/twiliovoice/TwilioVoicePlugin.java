@@ -655,6 +655,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 activeCall = null;
                 setAudioFocus(false);
                 javascriptErrorCallback(callException.getErrorCode(), callException.getMessage(), savedCallbackContext);
+                if (alertDialog.isShowing()) {
+                    alertDialog.dismiss();
+                }
                 notificationManager.cancelAll();
             }
 
@@ -699,6 +702,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 setAudioFocus(false);
                 javascriptCallback("oncalldiddisconnect", savedCallbackContext);
                 notificationManager.cancelAll();
+                if (alertDialog.isShowing()) {
+                    alertDialog.dismiss();
+                }
             }
         };
     }

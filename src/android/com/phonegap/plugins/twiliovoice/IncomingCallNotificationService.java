@@ -112,6 +112,9 @@ public class IncomingCallNotificationService extends Service {
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void handleIncomingCall(CallInvite callInvite, int notificationId) {
         Log.v(TAG, "handleIncomingCall");
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            //setCallInProgressNotification(callInvite, notificationId);
+//        }
         sendCallInviteToActivity(callInvite, notificationId);
     }
 
@@ -137,13 +140,14 @@ public class IncomingCallNotificationService extends Service {
             intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
             intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            //this.startActivity(intent);
 
             Bundle extras = new Bundle();
             extras.putInt(NOTIFICATION_ID_KEY, notificationId);
             extras.putString(Constants.CALL_SID_KEY, callInvite.getCallSid());
 
             PendingIntent pendingIntent = PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-            Notification notification = new Notification.Builder(this, Constants.VOICE_CHANNEL_HIGH_IMPORTANCE)
+            Notification notification = new Notification.Builder(this, createChannel(NotificationManager.IMPORTANCE_HIGH))
                     .setContentTitle(getResources().getString(R.string.app_name))
                     .setContentText(callInvite.getFrom() + " is calling")
                     .setSmallIcon(getResources().getIdentifier("ic_launcher", "mipmap", getPackageName()))
