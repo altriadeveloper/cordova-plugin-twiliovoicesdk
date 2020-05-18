@@ -704,7 +704,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 notificationManager.cancelAll();
                 if (alertDialog.isShowing()) {
                     alertDialog.dismiss();
-                }
+								}
+								if (callStatusSnackbar.isShown()) {
+									callStatusSnackbar.dismiss();
+								}
             }
         };
     }
