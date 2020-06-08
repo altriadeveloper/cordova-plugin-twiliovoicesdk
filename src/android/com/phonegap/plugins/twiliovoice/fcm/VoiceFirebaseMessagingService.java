@@ -51,9 +51,9 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        Log.v(TAG, "Received onMessageReceived()");
-        Log.v(TAG, "Bundle data: " + remoteMessage.getData());
-        Log.v(TAG, "From: " + remoteMessage.getFrom());
+        Log.d(TAG, "Received onMessageReceived()");
+        Log.d(TAG, "Bundle data: " + remoteMessage.getData());
+        Log.d(TAG, "From: " + remoteMessage.getFrom());
 
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
@@ -80,14 +80,14 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
-        Log.v(TAG, "onNewToken");
+        Log.d(TAG, "onNewToken");
         Intent intent = new Intent(Constants.ACTION_FCM_TOKEN);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     private void notify(CallInvite callInvite, int notificationId) {
         String callSid = callInvite.getCallSid();
-        Log.v(TAG, "notify " + callSid);
+        Log.d(TAG, "notify " + callSid);
         Notification notification = null;
 
         Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
@@ -141,7 +141,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
     @TargetApi(Build.VERSION_CODES.O)
     public Notification buildNotification(String text, PendingIntent pendingIntent, Bundle extras) {
-        Log.v(TAG, "BuildNotification " + text);
+        Log.d(TAG, "BuildNotification " + text);
         int iconIdentifier = getResources().getIdentifier("icon", "mipmap", getPackageName());
         int incomingCallAppNameId = getResources().getIdentifier("incoming_call_app_name", "string", getPackageName());
         String contentTitle = getString(incomingCallAppNameId);
@@ -156,7 +156,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void handleInvite(CallInvite callInvite, int notificationId) {
-        Log.v(TAG,"handleInvite");
+        Log.d(TAG,"handleInvite");
         Intent intent = new Intent(this, IncomingCallNotificationService.class);
         intent.setAction(Constants.ACTION_INCOMING_CALL);
         intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
@@ -166,7 +166,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void handleCanceledCallInvite(CancelledCallInvite cancelledCallInvite) {
-        Log.v(TAG, "handleCancelCallInvite");
+        Log.d(TAG, "handleCancelCallInvite");
         Intent intent = new Intent(this, IncomingCallNotificationService.class);
         intent.setAction(Constants.ACTION_CANCEL_CALL);
         intent.putExtra(Constants.CANCELLED_CALL_INVITE, cancelledCallInvite);

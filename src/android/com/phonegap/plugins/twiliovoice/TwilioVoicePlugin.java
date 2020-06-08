@@ -20,6 +20,7 @@ import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -44,10 +45,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 import capacitor.android.plugins.R;
 
@@ -74,7 +83,8 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     private Call activeCall;
     private CallInvite activeCallInvite;
     private Intent incomingCallIntent;
-
+    private Timer callDurationTimer;
+    private Instant callStartTime;
     // * Android System Fields
     private AudioManager audioManager;
     private RegistrationListener registrationListener = registrationListener();
@@ -94,10 +104,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     //endregion
 
     //region Cordova Implementation
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
-        Log.v(TAG, "Initializing");
+        Log.d(TAG, "Initializing");
 
         mainActivity = cordova.getActivity();
         applicationContext = mainActivity.getApplicationContext();
@@ -118,27 +129,29 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
         // If incoming intent is launched from call notification, handle call
         if (mainIntent.getAction().equals(Constants.ACTION_INCOMING_CALL)) {
-            Log.v(TAG, "Intent Launched With Incoming Call Action");
+            Log.d(TAG, "Intent Launched With Incoming Call Action");
             incomingCallIntent = mainIntent;
             handleIncomingCallIntent(incomingCallIntent);
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void initializeWithAccessTokenAndShouldRegisterForPush(final JSONArray arguments, final CallbackContext callbackContext) throws JSONException {
-        Log.v(TAG, "Initializing With Access Token And ShouldRegisterForPush");
+        Log.d(TAG, "Initializing With Access Token And ShouldRegisterForPush");
         shouldRegisterForPush = arguments.getBoolean(1);
         initializeWithAccessToken(arguments, callbackContext);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void initializeWithAccessToken(final JSONArray arguments, final CallbackContext callbackContext) throws JSONException {
-        Log.v(TAG, "Initializing With Access Token");
+        Log.d(TAG, "Initializing With Access Token");
         savedCallbackContext = callbackContext;
         accessToken = arguments.getString(0);
 
         getPushToken();
 
         if (incomingCallIntent != null) {
-            Log.v(TAG, "Handle an incoming call");
+            Log.d(TAG, "Handle an incoming call");
             handleIncomingCallIntent(incomingCallIntent);
             incomingCallIntent = null;
         }
@@ -165,20 +178,24 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     private void call(final JSONArray arguments, final CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
-                String accessToken = arguments.optString(0);
-                JSONObject options = arguments.optJSONObject(1);
-                Map<String, String> map = getMap(options);
+                try {
+                    String accessToken = arguments.optString(0);
+                    JSONObject options = arguments.optJSONObject(1);
+                    Map<String, String> map = getMap(options);
 
-                ConnectOptions connectOptions = new ConnectOptions.Builder(accessToken)
-                        .params(map)
-                        .build();
+                    ConnectOptions connectOptions = new ConnectOptions.Builder(accessToken)
+                            .params(map)
+                            .build();
 
-                if (activeCall != null && activeCall.getState().equals(Call.State.CONNECTED)) {
-                    activeCall.disconnect();
+                    if (activeCall != null && activeCall.getState().equals(Call.State.CONNECTED)) {
+                        activeCall.disconnect();
+                    }
+                    activeCall = Voice.connect(mainActivity, connectOptions, callListener);
+                    // activeCall = Voice.connect(cordova.getActivity(), accessToken, map, callListener);
+                    Log.d(TAG, "Placing call with params: " + map.toString());
+                } catch (Exception ex) {
+                    javascriptErrorCallback(42, "Error making call", savedCallbackContext);
                 }
-                activeCall = Voice.connect(mainActivity, connectOptions, callListener);
-                // activeCall = Voice.connect(cordova.getActivity(), accessToken, map, callListener);
-                Log.v(TAG, "Placing call with params: " + map.toString());
             }
         });
     }
@@ -270,11 +287,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             public void run() {
                 String mode = arguments.optString(0);
                 if (mode.equals("on")) {
-                    Log.v(TAG, "SPEAKER");
+                    Log.d(TAG, "SPEAKER");
                     audioManager.setMode(AudioManager.MODE_NORMAL);
                     audioManager.setSpeakerphoneOn(true);
                 } else {
-                    Log.v(TAG, "EARPIECE");
+                    Log.d(TAG, "EARPIECE");
                     audioManager.setMode(AudioManager.MODE_IN_CALL);
                     audioManager.setSpeakerphoneOn(false);
                 }
@@ -319,6 +336,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     }
 
     //region Core Interface Methods
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public boolean execute(final String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
         switch (action) {
@@ -375,7 +393,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
     private void javascriptCallback(String event, JSONObject arguments, CallbackContext callbackContext) {
         if (callbackContext == null) {
-            Log.v(TAG, "No callback context for call: " + event);
+            Log.d(TAG, "No callback context for call: " + event);
             String callText;
             if (arguments != null) {
                 // callText = String.format("document.dispatchEvent(new CustomEvent('%s', { detail: %s }))", event.substring(2), arguments.toString());
@@ -383,10 +401,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             } else {
                 callText = String.format("document.dispatchEvent(new CustomEvent('%s'))", event);
             }
-            Log.v(TAG, callText);
+            Log.d(TAG, callText);
             WebView nativeWebView = (WebView) webView.getView();
             if (nativeWebView != null) {
-                Log.v(TAG, "Native WebView Exists");
+                Log.d(TAG, "Native WebView Exists");
                 nativeWebView.evaluateJavascript(callText, null);
             }
             return; // TODO: Or should use the persisted one?
@@ -431,12 +449,12 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             Voice.unregister(accessToken, Voice.RegistrationChannel.FCM, oldDevicePushToken, new UnregistrationListener() {
                 @Override
                 public void onUnregistered(String accessToken, String fcmToken) {
-                    Log.v(TAG, "UnregisterOldPushDevice OnUnregistered");
+                    Log.d(TAG, "UnregisterOldPushDevice OnUnregistered");
                 }
 
                 @Override
                 public void onError(RegistrationException registrationException, String accessToken, String fcmToken) {
-                    Log.v(TAG, "UnregisterOldPushDevice OnError" + registrationException.getMessage());
+                    Log.d(TAG, "UnregisterOldPushDevice OnError" + registrationException.getMessage());
                 }
             });
         }
@@ -509,8 +527,9 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     //endregion
 
     //region Twilio Handlers
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void handleIncomingCallIntent(Intent intent) {
-        Log.v(TAG, "handleIncomingCallIntent " + intent.getAction());
+        Log.d(TAG, "handleIncomingCallIntent " + intent.getAction());
 
         switch (intent.getAction()) {
             case Constants.ACTION_INCOMING_CALL:
@@ -530,32 +549,53 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                     } catch (JSONException e) {
                         Log.e(TAG, e.getMessage(), e);
                     }
-                    Log.v(TAG, "oncallinvitereceived");
+                    Log.d(TAG, "oncallinvitereceived");
                     javascriptCallback("oncallinvitereceived", callInviteProperties, savedCallbackContext);
 
                     showIncomingCallDialog();
 
+                    String baseCallText = "Call with " + activeCallInvite.getFrom();
                     if (incomingCallIntent != null || savedCallbackContext == null) {
                         // Show Snackbar for call management.
-                        callStatusSnackbar = Snackbar.make(webView.getView(), "Call with " + activeCallInvite.getFrom(), BaseTransientBottomBar.LENGTH_INDEFINITE)
+                        callStatusSnackbar = Snackbar.make(webView.getView(), baseCallText, BaseTransientBottomBar.LENGTH_INDEFINITE)
                                 .setAction("End Call", new View.OnClickListener() {
                                     @Override
                                     public void onClick(View v) {
-                                        Log.v(TAG, "Snack bar end call clicked");
+                                        Log.d(TAG, "Snack bar end call clicked");
                                         if (activeCall != null) {
                                             activeCall.disconnect();
                                             callStatusSnackbar.dismiss();
                                             callStatusSnackbar = null;
+
+                                            callDurationTimer.cancel();
                                         }
                                     }
                                 });
+                        callDurationTimer = new Timer();
+                        callDurationTimer.scheduleAtFixedRate(new TimerTask() {
+                            public void run() {
+                                if (callStatusSnackbar != null && callStartTime != null) {
+                                    Instant currentTime = Instant.now();
+                                    Duration callDuration = Duration.between(callStartTime, currentTime);
+                                    final long totalSeconds = callDuration.get(ChronoUnit.SECONDS);
+                                    final long minutes = totalSeconds / 60;
+                                    final long seconds = totalSeconds % 60;
+                                    String durationTimer = String.format("%d:%02d", minutes, seconds);
+                                    mainActivity.runOnUiThread(() -> {
+                                        callStatusSnackbar.setText(baseCallText + " - " + durationTimer);
+                                    });
+                                }
+                            }
+                        }, 0, 1000);
                     }
                 }
+                // activeCallInvite = null;
+                intent.removeExtra(Constants.INCOMING_CALL_INVITE);
                 break;
             case Constants.ACTION_CANCEL_CALL:
                 activeCallInvite = null;
                 SoundPoolManager.getInstance(cordova.getActivity()).stopRinging();
-                Log.v(TAG, "oncallinvitecanceled");
+                Log.d(TAG, "oncallinvitecanceled");
                 javascriptCallback("oncallinvitecanceled", savedCallbackContext);
                 break;
         }
@@ -573,12 +613,13 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
     //region Alert Dialog Implementation
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private DialogInterface.OnClickListener answerCallClickListener() {
         return (dialog, which) -> {
-            Log.v(TAG, "Clicked accept");
+            Log.d(TAG, "Clicked accept");
             SoundPoolManager.getInstance(mainActivity).stopRinging();
             activeCallInvite.accept(applicationContext, callListener);
-
+            callStartTime = Instant.now();
             if (alertDialog != null && alertDialog.isShowing()) {
                 alertDialog.dismiss();
             }
@@ -603,6 +644,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void showIncomingCallDialog() {
         if (activeCallInvite != null) {
             alertDialog = createIncomingCallDialog(webviewContext,
@@ -651,7 +693,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
             @Override
             public void onConnectFailure(@NonNull Call call, @NonNull CallException callException) {
-                Log.v(TAG, "Call Listener OnConnectFailure");
+                Log.d(TAG, "Call Listener OnConnectFailure");
                 activeCall = null;
                 setAudioFocus(false);
                 javascriptErrorCallback(callException.getErrorCode(), callException.getMessage(), savedCallbackContext);
@@ -663,12 +705,12 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
             @Override
             public void onRinging(@NonNull Call call) {
-                Log.v(TAG, "Call Listener Ringing");
+                Log.d(TAG, "Call Listener Ringing");
             }
 
             @Override
             public void onConnected(@NonNull Call call) {
-                Log.v(TAG, "Call Listener OnConnected");
+                Log.d(TAG, "Call Listener OnConnected");
                 activeCall = call;
                 JSONObject callProperties = new JSONObject();
                 try {
@@ -687,27 +729,27 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
             @Override
             public void onReconnecting(@NonNull Call call, @NonNull CallException callException) {
-                Log.v(TAG, "Call Listener OnReconnecting");
+                Log.d(TAG, "Call Listener OnReconnecting");
             }
 
             @Override
             public void onReconnected(@NonNull Call call) {
-                Log.v(TAG, "Call Listener OnReconnected");
+                Log.d(TAG, "Call Listener OnReconnected");
             }
 
             @Override
             public void onDisconnected(@NonNull Call call, @Nullable CallException callException) {
-                Log.v(TAG, "Call Listener OnDisconnected");
+                Log.d(TAG, "Call Listener OnDisconnected");
                 activeCall = null;
                 setAudioFocus(false);
                 javascriptCallback("oncalldiddisconnect", savedCallbackContext);
                 notificationManager.cancelAll();
                 if (alertDialog.isShowing()) {
                     alertDialog.dismiss();
-								}
-								if (callStatusSnackbar.isShown()) {
-									callStatusSnackbar.dismiss();
-								}
+                }
+                if (callStatusSnackbar != null && callStatusSnackbar.isShown()) {
+                    callStatusSnackbar.dismiss();
+                }
             }
         };
     }
@@ -716,7 +758,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         return new RegistrationListener() {
             @Override
             public void onRegistered(@NonNull String accessToken, @NonNull String fcmToken) {
-                Log.v(TAG, "Successfully registered FCM " + fcmToken);
+                Log.d(TAG, "Successfully registered FCM " + fcmToken);
             }
 
             @Override
@@ -736,6 +778,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
     private class VoiceBroadcastReceiver extends BroadcastReceiver {
 
+        @RequiresApi(api = Build.VERSION_CODES.O)
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();

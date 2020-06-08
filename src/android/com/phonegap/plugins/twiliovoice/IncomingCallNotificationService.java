@@ -33,7 +33,7 @@ public class IncomingCallNotificationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
-        Log.v(TAG, "onStartCommand " + action);
+        Log.d(TAG, "onStartCommand " + action);
         if (action != null) {
             CallInvite callInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
             int notificationId = intent.getIntExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, 0);
@@ -68,7 +68,7 @@ public class IncomingCallNotificationService extends Service {
                                            final CallInvite callInvite,
                                            int notificationId,
                                            String channelId) {
-        Log.v(TAG, "buildNotification " + text);
+        Log.d(TAG, "buildNotification " + text);
 
         Notification.Builder builder =
                 new Notification.Builder(getApplicationContext(), channelId)
@@ -85,7 +85,7 @@ public class IncomingCallNotificationService extends Service {
 
     @TargetApi(Build.VERSION_CODES.O)
     private String createChannel(int channelImportance) {
-        Log.v(TAG, "createChannel");
+        Log.d(TAG, "createChannel");
         NotificationChannel callInviteChannel = new NotificationChannel(Constants.VOICE_CHANNEL_HIGH_IMPORTANCE,
                 "Primary Voice Channel", NotificationManager.IMPORTANCE_HIGH);
         String channelId = Constants.VOICE_CHANNEL_HIGH_IMPORTANCE;
@@ -104,14 +104,14 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private void handleCancelledCall(Intent intent) {
-        Log.v(TAG, "handleCancelledCall");
+        Log.d(TAG, "handleCancelledCall");
         endForeground();
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void handleIncomingCall(CallInvite callInvite, int notificationId) {
-        Log.v(TAG, "handleIncomingCall");
+        Log.d(TAG, "handleIncomingCall");
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 //            //setCallInProgressNotification(callInvite, notificationId);
 //        }
@@ -124,7 +124,7 @@ public class IncomingCallNotificationService extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void sendCallInviteToActivity(CallInvite callInvite, int notificationId) {
-        Log.v(TAG, "sendCallInviteToActivity");
+        Log.d(TAG, "sendCallInviteToActivity");
         if (isAppVisible()) {
             // Just notify open application of call.
             Intent intent = new Intent(Constants.ACTION_INCOMING_CALL);
