@@ -751,7 +751,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 setAudioFocus(false);
                 javascriptCallback("oncalldiddisconnect", savedCallbackContext);
                 notificationManager.cancelAll();
-                if (alertDialog.isShowing()) {
+                if (alertDialog != null && alertDialog.isShowing()) {
                     alertDialog.dismiss();
                 }
                 if (callStatusSnackbar != null && callStatusSnackbar.isShown()) {
