@@ -135,6 +135,32 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         }
     }
 
+    @Override
+    public Object onMessage(String id, Object data) {
+        return super.onMessage(id, data);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        final String action = intent.getAction();
+        switch (action) {
+            case Constants.ACTION_INCOMING_CALL:
+                Log.v(TAG, "NEW Intent Launched With Incoming Call Action");
+                incomingCallIntent = intent;
+                handleIncomingCallIntent(incomingCallIntent);
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onResume(boolean multitasking) {
+        super.onResume(multitasking);
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void initializeWithAccessTokenAndShouldRegisterForPush(final JSONArray arguments, final CallbackContext callbackContext) throws JSONException {
         Log.v(TAG, "Initializing With Access Token And ShouldRegisterForPush");
@@ -590,7 +616,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                     }
                 }
                 // activeCallInvite = null;
-                intent.removeExtra(Constants.INCOMING_CALL_INVITE);
+                // intent.removeExtra(Constants.INCOMING_CALL_INVITE);
                 break;
             case Constants.ACTION_CANCEL_CALL:
                 activeCallInvite = null;
@@ -598,7 +624,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 Log.v(TAG, "oncallinvitecanceled");
                 javascriptCallback("oncallinvitecanceled", savedCallbackContext);
                 notificationManager.cancelAll();
-                if (alertDialog.isShowing()) {
+                if (alertDialog != null && alertDialog.isShowing()) {
                     alertDialog.dismiss();
                 }
                 if (callStatusSnackbar != null && callStatusSnackbar.isShown()) {
