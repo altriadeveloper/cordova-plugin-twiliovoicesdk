@@ -655,6 +655,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             callStartTime = Instant.now();
             if (alertDialog != null && alertDialog.isShowing()) {
                 alertDialog.dismiss();
+                activeCallInvite = null;
             }
 
             if (callStatusSnackbar != null) {
@@ -679,7 +680,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void showIncomingCallDialog() {
-        if (activeCallInvite != null) {
+        if (activeCallInvite != null && activeCall == null) {
             alertDialog = createIncomingCallDialog(webviewContext,
                     activeCallInvite,
                     mainActivity.getResources().getIdentifier("ic_launcher", "mipmap", mainActivity.getPackageName()),
@@ -758,6 +759,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                     Log.e(TAG, e.getMessage(), e);
                 }
                 javascriptCallback("oncalldidconnect", callProperties, savedCallbackContext);
+
+                if (alertDialog != null && alertDialog.isShowing()) {
+                    alertDialog.dismiss();
+                }
             }
 
             @Override
