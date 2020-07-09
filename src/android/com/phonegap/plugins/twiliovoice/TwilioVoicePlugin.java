@@ -16,6 +16,8 @@ import android.media.AudioManager;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
@@ -101,6 +103,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     // * UI
     private AlertDialog alertDialog;
     private Snackbar callStatusSnackbar;
+    private Boolean isRinging = false;
     //endregion
 
     //region Cordova Implementation
@@ -133,6 +136,10 @@ public class TwilioVoicePlugin extends CordovaPlugin {
             incomingCallIntent = mainIntent;
             handleIncomingCallIntent(incomingCallIntent);
         }
+        if (mainIntent.getAction().equals(Constants.ACTION_CANCEL_CALL)) {
+            incomingCallIntent = null;
+            handleIncomingCallIntent(incomingCallIntent);
+        }
     }
 
     @Override
@@ -140,7 +147,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         return super.onMessage(id, data);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.O_MR1)
     @Override
     public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -148,6 +155,8 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         switch (action) {
             case Constants.ACTION_INCOMING_CALL:
                 Log.v(TAG, "NEW Intent Launched With Incoming Call Action");
+                mainActivity.setShowWhenLocked(true);
+                mainActivity.setTurnScreenOn(true);
                 incomingCallIntent = intent;
                 handleIncomingCallIntent(incomingCallIntent);
                 break;
@@ -159,6 +168,18 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     @Override
     public void onResume(boolean multitasking) {
         super.onResume(multitasking);
+    }
+
+    @Override
+    public void onPause(boolean multitasking) {
+        super.onPause(multitasking);
+        // TODO: This might not be a good idea.   Maybe put the call on hold?
+        clearCallUIElements();
+    }
+
+    @Override
+    public void onDestroy() {
+        resetCallStatus();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -464,7 +485,11 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         }
         PluginResult result = new PluginResult(PluginResult.Status.ERROR, object);
         result.setKeepCallback(true);
-        callbackContext.sendPluginResult(result);
+        if (callbackContext != null) {
+            callbackContext.sendPluginResult(result);
+        } else {
+            Log.v(TAG, "JavascriptErrorCallback:" + errorMessage);
+        }
     }
     //endregion
     //endregion
@@ -560,7 +585,14 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         switch (intent.getAction()) {
             case Constants.ACTION_INCOMING_CALL:
                 activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
-                if (activeCallInvite != null) {
+                if (activeCallInvite != null && !isRinging) {
+//                    Window window = mainActivity.getWindow();
+//                    window.addFlags(
+//                            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+//                            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+//                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+//                    );
+                    isRinging = true;
                     SoundPoolManager.getInstance(cordova.getActivity()).playRinging();
                     NotificationManager mNotifyMgr =
                             (NotificationManager) cordova.getActivity().getSystemService(Activity.NOTIFICATION_SERVICE);
@@ -615,21 +647,19 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                         }, 0, 1000);
                     }
                 }
-                // activeCallInvite = null;
-                // intent.removeExtra(Constants.INCOMING_CALL_INVITE);
                 break;
             case Constants.ACTION_CANCEL_CALL:
                 activeCallInvite = null;
+                isRinging = false;
+                if (activeCall != null) {
+                    activeCall.disconnect();
+                    activeCall = null;
+                }
                 SoundPoolManager.getInstance(cordova.getActivity()).stopRinging();
                 Log.v(TAG, "oncallinvitecanceled");
                 javascriptCallback("oncallinvitecanceled", savedCallbackContext);
-                notificationManager.cancelAll();
-                if (alertDialog != null && alertDialog.isShowing()) {
-                    alertDialog.dismiss();
-                }
-                if (callStatusSnackbar != null && callStatusSnackbar.isShown()) {
-                    callStatusSnackbar.dismiss();
-                }
+
+                clearCallUIElements();
                 break;
         }
     }
@@ -651,12 +681,14 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         return (dialog, which) -> {
             Log.v(TAG, "Clicked accept");
             SoundPoolManager.getInstance(mainActivity).stopRinging();
+            isRinging = false;
             activeCallInvite.accept(applicationContext, callListener);
             callStartTime = Instant.now();
-            if (alertDialog != null && alertDialog.isShowing()) {
-                alertDialog.dismiss();
-                activeCallInvite = null;
-            }
+
+            activeCallInvite = null;
+            incomingCallIntent = null;
+
+            clearCallUIElements();
 
             if (callStatusSnackbar != null) {
                 callStatusSnackbar.show();
@@ -667,13 +699,13 @@ public class TwilioVoicePlugin extends CordovaPlugin {
     private DialogInterface.OnClickListener cancelCallClickListener() {
         return (dialogInterface, i) -> {
             SoundPoolManager.getInstance(mainActivity).stopRinging();
+            isRinging = false;
             if (activeCallInvite != null) {
                 activeCallInvite.reject(applicationContext);
                 javascriptCallback("oncallinvitecanceled", savedCallbackContext);
             }
-            if (alertDialog != null && alertDialog.isShowing()) {
-                alertDialog.dismiss();
-            }
+
+            clearCallUIElements();
         };
     }
 
@@ -704,6 +736,38 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         alertDialogBuilder.setMessage(callInvite.getFrom() + " is calling.");
         return alertDialogBuilder.create();
     }
+
+    private void clearCallUIElements() {
+        // Close all dialogs and alerts
+        if (alertDialog != null && alertDialog.isShowing()) {
+            alertDialog.dismiss();
+        }
+        if (callStatusSnackbar != null && callStatusSnackbar.isShownOrQueued()) {
+            callStatusSnackbar.dismiss();
+        }
+        // Cancel notifications
+        notificationManager.cancelAll();
+    }
+
+    private void resetCallStatus() {
+        // Stop Ringing
+        SoundPoolManager.getInstance(mainActivity).stopRinging();
+        isRinging = false;
+        clearCallUIElements();
+        // Clear out active calls, call invites, cancels, etc
+        if (activeCall != null) {
+            activeCall.disconnect();
+            activeCall = null;
+        }
+        if (activeCallInvite != null) {
+            activeCallInvite.reject(applicationContext);
+            activeCallInvite = null;
+        }
+        if (incomingCallIntent != null) {
+            incomingCallIntent = null;
+        }
+
+    }
     //endregion
 
     //region Nested Classes
@@ -731,15 +795,14 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 activeCall = null;
                 setAudioFocus(false);
                 javascriptErrorCallback(callException.getErrorCode(), callException.getMessage(), savedCallbackContext);
-                if (alertDialog.isShowing()) {
-                    alertDialog.dismiss();
-                }
-                notificationManager.cancelAll();
+
+                clearCallUIElements();
             }
 
             @Override
             public void onRinging(@NonNull Call call) {
                 Log.v(TAG, "Call Listener Ringing");
+                mainActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
             }
 
             @Override
@@ -763,6 +826,8 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 if (alertDialog != null && alertDialog.isShowing()) {
                     alertDialog.dismiss();
                 }
+
+                mainActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
 
             @Override
@@ -781,13 +846,8 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 activeCall = null;
                 setAudioFocus(false);
                 javascriptCallback("oncalldiddisconnect", savedCallbackContext);
-                notificationManager.cancelAll();
-                if (alertDialog != null && alertDialog.isShowing()) {
-                    alertDialog.dismiss();
-                }
-                if (callStatusSnackbar != null && callStatusSnackbar.isShown()) {
-                    callStatusSnackbar.dismiss();
-                }
+                mainActivity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                clearCallUIElements();
             }
 
         };
