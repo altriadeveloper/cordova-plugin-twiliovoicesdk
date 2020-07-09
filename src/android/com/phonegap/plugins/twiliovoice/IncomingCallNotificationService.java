@@ -172,11 +172,6 @@ public class IncomingCallNotificationService extends Service {
                     intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
                     intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    //intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    //intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    //intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                    //this.startActivity(intent);
-                    //LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
                     sendNotification("CEA Incoming Call", "Incoming Call From " + callInvite.getFrom(), notificationId, intent);
                 }
             } else {
@@ -197,6 +192,7 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private void sendCallCancelToActivity(Intent intent, int notificationId) {
+        Log.v(TAG, "sendCallCancelToActivity");
         endForeground();
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -225,6 +221,7 @@ public class IncomingCallNotificationService extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     private void sendNotification(String title, String text, int notificationId, Intent intent) {
+        Log.v(TAG, "sendNotification");
         // https://developer.android.com/training/notify-user/time-sensitive
         String channelId = createChannel(NotificationManager.IMPORTANCE_HIGH);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT);

@@ -39,7 +39,6 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onCreate() {
-
         super.onCreate();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
     }
