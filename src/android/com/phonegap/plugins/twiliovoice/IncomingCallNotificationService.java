@@ -286,9 +286,9 @@ public class IncomingCallNotificationService extends Service {
         if (procInfos != null)
         {
             for (final ActivityManager.RunningAppProcessInfo processInfo : procInfos) {
-                if (processInfo.processName.equals(getPackageName())) {
-                    return true;
-                }
+							if (processInfo.processName.equals(getPackageName()) && processInfo.importance != ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE) {
+								return true;
+						}
             }
         }
         return false;
