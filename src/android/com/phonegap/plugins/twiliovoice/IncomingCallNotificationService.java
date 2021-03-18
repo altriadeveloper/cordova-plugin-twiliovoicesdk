@@ -125,6 +125,7 @@ public class IncomingCallNotificationService extends Service {
                     Log.v(TAG, "SendCallInviteToActivity:UNLOCKED:OPEN:VISIBLE");
                     Intent intent = new Intent(Constants.ACTION_INCOMING_CALL);
                     intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+										intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                     intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -134,6 +135,7 @@ public class IncomingCallNotificationService extends Service {
                     Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
                     intent.setAction(Constants.ACTION_INCOMING_CALL);
                     intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+										intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                     intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -148,6 +150,7 @@ public class IncomingCallNotificationService extends Service {
                 Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
                 intent.setAction(Constants.ACTION_INCOMING_CALL);
                 intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+								intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                 intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -160,6 +163,7 @@ public class IncomingCallNotificationService extends Service {
                     Log.v(TAG, "SendCallInviteToActivity:UOCKED:OPEN:VISIBLE");
                     Intent intent = new Intent(Constants.ACTION_INCOMING_CALL);
                     intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+										intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                     intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -170,6 +174,7 @@ public class IncomingCallNotificationService extends Service {
                     Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
                     intent.setAction(Constants.ACTION_INCOMING_CALL);
                     intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+										intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                     intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                     sendNotification("CEA Incoming Call", "Incoming Call From " + callInvite.getFrom(), notificationId, intent);
@@ -180,6 +185,7 @@ public class IncomingCallNotificationService extends Service {
                 Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
                 intent.setAction(Constants.ACTION_INCOMING_CALL);
                 intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
+								intent.setExtrasClassLoader(CallInvite.class.getClassLoader());
                 intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
                 sendNotification("CEA Incoming Call", "Incoming Call From " + callInvite.getFrom(), notificationId, intent);
             }
@@ -286,7 +292,7 @@ public class IncomingCallNotificationService extends Service {
         if (procInfos != null)
         {
             for (final ActivityManager.RunningAppProcessInfo processInfo : procInfos) {
-							if (processInfo.processName.equals(getPackageName()) && processInfo.importance != ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE) {
+							if (processInfo.processName.equals(getPackageName())) {
 								return true;
 						}
             }
