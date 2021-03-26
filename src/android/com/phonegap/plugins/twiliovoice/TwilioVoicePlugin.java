@@ -154,17 +154,62 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         super.onNewIntent(intent);
         Log.v(TAG, "onNewIntent");
         final String action = intent.getAction();
+        KeyguardManager keyguardManager = (KeyguardManager) mainActivity.getSystemService(Context.KEYGUARD_SERVICE);
         switch (action) {
             case Constants.ACTION_INCOMING_CALL:
                 Log.v(TAG, "NEW Intent Launched With Incoming Call Action");
                 mainActivity.setShowWhenLocked(true);
                 mainActivity.setTurnScreenOn(true);
-                KeyguardManager keyguardManager = (KeyguardManager) mainActivity.getSystemService(Context.KEYGUARD_SERVICE);
+
                 keyguardManager.requestDismissKeyguard(mainActivity, null);
                 if (incomingCallIntent == null) {
                     Log.v(TAG, "No IncomingCallIntent Exists Before");
                     incomingCallIntent = intent;
                     handleIncomingCallIntent(incomingCallIntent);
+                }
+                break;
+            case Constants.ACTION_ACCEPT:
+                mainActivity.setShowWhenLocked(true);
+                mainActivity.setTurnScreenOn(true);
+                keyguardManager.requestDismissKeyguard(mainActivity, null);
+                if (activeCallInvite == null) {
+                    Log.v(TAG, "No IncomingCallIntent Exists Before");
+                    incomingCallIntent = intent;
+                    handleIncomingCallIntent(intent);
+                    activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
+                    Log.v(TAG, "Accepted Call Intent");
+                    SoundPoolManager.getInstance(mainActivity).stopRinging();
+                    isRinging = false;
+                    activeCallInvite.accept(applicationContext, callListener);
+                    callStartTime = Instant.now();
+
+                    activeCallInvite = null;
+                    incomingCallIntent = null;
+
+                    clearCallUIElements();
+
+                    if (callStatusSnackbar != null) {
+                        callStatusSnackbar.show();
+                    }
+                }
+                break;
+            case Constants.ACTION_REJECT:
+                mainActivity.setShowWhenLocked(true);
+                mainActivity.setTurnScreenOn(true);
+                keyguardManager.requestDismissKeyguard(mainActivity, null);
+                if (activeCallInvite == null) {
+                    Log.v(TAG, "No IncomingCallIntent Exists Before");
+                    activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
+
+                    Log.v(TAG, "Canceled Call Intent");
+                    SoundPoolManager.getInstance(mainActivity).stopRinging();
+                    isRinging = false;
+                    if (activeCallInvite != null) {
+                        activeCallInvite.reject(applicationContext);
+                        javascriptCallback("oncallinvitecanceled", savedCallbackContext);
+                    }
+
+                    resetCallStatus();
                 }
                 break;
             default:
@@ -612,6 +657,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         Log.v(TAG, "handleIncomingCallIntent -" + intent.getAction());
 
         switch (intent.getAction()) {
+            case Constants.ACTION_ACCEPT:
             case Constants.ACTION_INCOMING_CALL:
                 activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
                 if (activeCallInvite != null && !isRinging) {
