@@ -107,8 +107,7 @@ public class IncomingCallNotificationService extends Service {
         } else {
             //noinspection deprecation
             return new NotificationCompat.Builder(this)
-                    .setSmallIcon(getIconIdForNotification())
-                    .setLargeIcon(getIconBitmap())
+										.setSmallIcon(R.drawable.launcher_icon)
                     .setContentTitle("CEA Incoming Call")
                     .setContentText("Incoming Call From " + callInvite.getFrom())
                     .setAutoCancel(true)
@@ -148,14 +147,12 @@ public class IncomingCallNotificationService extends Service {
 
         Notification.Builder builder =
                 new Notification.Builder(getApplicationContext(), channelId)
-                        .setSmallIcon(getIconIdForNotification())
-                        .setLargeIcon(getIconBitmap())
+												.setSmallIcon(R.drawable.launcher_icon)
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText(text)
                         .setCategory(Notification.CATEGORY_CALL)
                         .setExtras(extras)
                         .setAutoCancel(true)
-                        .setVibrate(new long[] { 1000, 1000, 1000, 1000, 1000 })
                         .addAction(android.R.drawable.ic_menu_call, "Accept", piAcceptIntent)
                         .addAction(android.R.drawable.ic_menu_delete, "Decline", piRejectIntent)
                         .setFullScreenIntent(pendingIntent, true);
@@ -232,30 +229,6 @@ public class IncomingCallNotificationService extends Service {
             Log.i(TAG, "setCallInProgressNotification - app is NOT visible.");
             startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_HIGH));
         }
-    }
-
-    private Bitmap getIconBitmap() {
-        int resId = getIconIdForNotification();
-        PackageManager manager = getPackageManager();
-        try {
-            Resources resources = manager.getResourcesForApplication(getPackageName());
-            Bitmap icon = BitmapFactory.decodeResource(resources, resId);
-            return icon;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private int getIconIdForNotification() {
-        PackageManager manager = getPackageManager();
-        try {
-            Resources resources = manager.getResourcesForApplication(getPackageName());
-            int resId = resources.getIdentifier("ic_launcher", "mipmap", getPackageName());
-            return resId;
-        } catch (Exception ex) {
-
-        }
-        return R.drawable.launcher_icon;
     }
 
     /*
