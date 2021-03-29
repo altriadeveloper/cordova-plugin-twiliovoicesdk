@@ -23,6 +23,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -107,7 +108,7 @@ public class IncomingCallNotificationService extends Service {
         } else {
             //noinspection deprecation
             return new NotificationCompat.Builder(this)
-										.setSmallIcon(R.drawable.launcher_icon)
+					.setSmallIcon(R.drawable.launcher_icon)
                     .setContentTitle("CEA Incoming Call")
                     .setContentText("Incoming Call From " + callInvite.getFrom())
                     .setAutoCancel(true)
@@ -147,12 +148,13 @@ public class IncomingCallNotificationService extends Service {
 
         Notification.Builder builder =
                 new Notification.Builder(getApplicationContext(), channelId)
-												.setSmallIcon(R.drawable.launcher_icon)
+						.setSmallIcon(R.drawable.launcher_icon)
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText(text)
                         .setCategory(Notification.CATEGORY_CALL)
                         .setExtras(extras)
                         .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
                         .addAction(android.R.drawable.ic_menu_call, "Accept", piAcceptIntent)
                         .addAction(android.R.drawable.ic_menu_delete, "Decline", piRejectIntent)
                         .setFullScreenIntent(pendingIntent, true);
@@ -172,7 +174,7 @@ public class IncomingCallNotificationService extends Service {
             channelId = Constants.VOICE_CHANNEL_LOW_IMPORTANCE;
         }
         callInviteChannel.setLightColor(Color.GREEN);
-        callInviteChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        callInviteChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.createNotificationChannel(callInviteChannel);
 
@@ -207,11 +209,18 @@ public class IncomingCallNotificationService extends Service {
 
     private void handleIncomingCall(CallInvite callInvite, int notificationId) {
         Log.v(TAG, "Handle Incoming Call");
+        PowerManager pm = (PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
+        boolean isScreenOn = Build.VERSION.SDK_INT >= 20 ? pm.isInteractive() : pm.isScreenOn();
+        if (!isScreenOn) {
+            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "CEA:notificationLock");
+            wl.acquire(10000);
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ringtone.play();
             setCallInProgressNotification(callInvite, notificationId);
         }
-        sendCallInviteToActivity(callInvite, notificationId);
+        // sendCallInviteToActivity(callInvite, notificationId);
     }
 
     private void endForeground() {
@@ -224,7 +233,8 @@ public class IncomingCallNotificationService extends Service {
         Log.v(TAG, "SetCallInProgressNotification");
         if (isAppVisible()) {
             Log.i(TAG, "setCallInProgressNotification - app is visible.");
-            startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_LOW));
+            sendCallInviteToActivity(callInvite, notificationId);
+            //startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_LOW));
         } else {
             Log.i(TAG, "setCallInProgressNotification - app is NOT visible.");
             startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_HIGH));

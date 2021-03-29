@@ -161,7 +161,6 @@ public class TwilioVoicePlugin extends CordovaPlugin {
                 Log.v(TAG, "NEW Intent Launched With Incoming Call Action");
                 mainActivity.setShowWhenLocked(true);
                 mainActivity.setTurnScreenOn(true);
-
                 keyguardManager.requestDismissKeyguard(mainActivity, null);
                 if (incomingCallIntent == null) {
                     Log.v(TAG, "No IncomingCallIntent Exists Before");
