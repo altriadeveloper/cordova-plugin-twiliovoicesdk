@@ -154,6 +154,7 @@ public class TwilioVoicePlugin extends CordovaPlugin {
         super.onNewIntent(intent);
         Log.v(TAG, "onNewIntent");
         final String action = intent.getAction();
+        Log.v(TAG, "Intent Action: " + action);
         KeyguardManager keyguardManager = (KeyguardManager) mainActivity.getSystemService(Context.KEYGUARD_SERVICE);
         switch (action) {
             case Constants.ACTION_INCOMING_CALL:
@@ -658,6 +659,63 @@ public class TwilioVoicePlugin extends CordovaPlugin {
 
         switch (intent.getAction()) {
             case Constants.ACTION_ACCEPT:
+                activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
+                if (activeCallInvite != null && !isRinging) {
+
+                    NotificationManager mNotifyMgr =
+                            (NotificationManager) cordova.getActivity().getSystemService(Activity.NOTIFICATION_SERVICE);
+                    mNotifyMgr.cancel(intent.getIntExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, 0));
+                    JSONObject callInviteProperties = new JSONObject();
+                    try {
+                        callInviteProperties.putOpt("from", activeCallInvite.getFrom());
+                        callInviteProperties.putOpt("to", activeCallInvite.getTo());
+                        callInviteProperties.putOpt("callSid", activeCallInvite.getCallSid());
+                        String callInviteState = "pending";
+                        callInviteProperties.putOpt("state", callInviteState);
+                    } catch (JSONException e) {
+                        Log.e(TAG, e.getMessage(), e);
+                    }
+                    Log.v(TAG, "oncallinvitereceived");
+                    javascriptCallback("oncallinvitereceived", callInviteProperties, savedCallbackContext);
+
+                    showIncomingCallDialog();
+
+                    String baseCallText = "Call with " + activeCallInvite.getFrom();
+                    if (incomingCallIntent != null || savedCallbackContext == null) {
+                        // Show Snackbar for call management.
+                        callStatusSnackbar = Snackbar.make(webView.getView(), baseCallText, BaseTransientBottomBar.LENGTH_INDEFINITE)
+                                .setAction("End Call", new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        Log.v(TAG, "Snack bar end call clicked");
+                                        if (activeCall != null) {
+                                            activeCall.disconnect();
+                                            callStatusSnackbar.dismiss();
+                                            callStatusSnackbar = null;
+
+                                            callDurationTimer.cancel();
+                                        }
+                                    }
+                                });
+                        callDurationTimer = new Timer();
+                        callDurationTimer.scheduleAtFixedRate(new TimerTask() {
+                            public void run() {
+                                if (callStatusSnackbar != null && callStartTime != null) {
+                                    Instant currentTime = Instant.now();
+                                    Duration callDuration = Duration.between(callStartTime, currentTime);
+                                    final long totalSeconds = callDuration.get(ChronoUnit.SECONDS);
+                                    final long minutes = totalSeconds / 60;
+                                    final long seconds = totalSeconds % 60;
+                                    String durationTimer = String.format("%d:%02d", minutes, seconds);
+                                    mainActivity.runOnUiThread(() -> {
+                                        callStatusSnackbar.setText(baseCallText + " - " + durationTimer);
+                                    });
+                                }
+                            }
+                        }, 0, 1000);
+                    }
+                }
+                break;
             case Constants.ACTION_INCOMING_CALL:
                 activeCallInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
                 if (activeCallInvite != null && !isRinging) {

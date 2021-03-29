@@ -1,21 +1,29 @@
 package com.phonegap.plugins.twiliovoice;
 
 import android.annotation.TargetApi;
-import android.app.ActivityManager;
-import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Icon;
+import android.media.AudioAttributes;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -25,23 +33,26 @@ import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.twilio.voice.CallInvite;
-import com.twilio.voice.CancelledCallInvite;
-
-import java.util.List;
 
 import capacitor.android.plugins.R;
-import dagger.Component;
 
 @RequiresApi(api = Build.VERSION_CODES.M)
 public class IncomingCallNotificationService extends Service {
 
     private static final String TAG = IncomingCallNotificationService.class.getSimpleName();
-
+    private Ringtone ringtone;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
-
+        Log.v(TAG, "OnStartCommand - " + action);
+        if (ringtone == null) {
+            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://"+ getApplicationContext().getPackageName() + "/raw/ringing");
+            ringtone = RingtoneManager.getRingtone(getApplicationContext(), soundUri);
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                ringtone.setVolume(.7f);
+            }
+        }
         if (action != null) {
             CallInvite callInvite = intent.getParcelableExtra(Constants.INCOMING_CALL_INVITE);
             int notificationId = intent.getIntExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, 0);
@@ -71,6 +82,7 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private Notification createNotification(CallInvite callInvite, int notificationId, int channelImportance) {
+        Log.v(TAG, "Create Notification");
         Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         intent.setAction(Constants.ACTION_INCOMING_CALL_NOTIFICATION);
         intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
@@ -95,7 +107,8 @@ public class IncomingCallNotificationService extends Service {
         } else {
             //noinspection deprecation
             return new NotificationCompat.Builder(this)
-                    .setSmallIcon(R.drawable.launcher_icon)
+                    .setSmallIcon(getIconIdForNotification())
+                    .setLargeIcon(getIconBitmap())
                     .setContentTitle("CEA Incoming Call")
                     .setContentText("Incoming Call From " + callInvite.getFrom())
                     .setAutoCancel(true)
@@ -119,6 +132,8 @@ public class IncomingCallNotificationService extends Service {
                                            final CallInvite callInvite,
                                            int notificationId,
                                            String channelId) {
+        Log.v(TAG, "Build Notification");
+
         Intent rejectIntent = new Intent(getApplicationContext(), IncomingCallNotificationService.class);
         rejectIntent.setAction(Constants.ACTION_REJECT);
         rejectIntent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
@@ -133,14 +148,16 @@ public class IncomingCallNotificationService extends Service {
 
         Notification.Builder builder =
                 new Notification.Builder(getApplicationContext(), channelId)
-                        .setSmallIcon(R.drawable.launcher_icon)
+                        .setSmallIcon(getIconIdForNotification())
+                        .setLargeIcon(getIconBitmap())
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText(text)
                         .setCategory(Notification.CATEGORY_CALL)
                         .setExtras(extras)
                         .setAutoCancel(true)
-                        .addAction(android.R.drawable.ic_menu_delete, "Decline", piRejectIntent)
+                        .setVibrate(new long[] { 1000, 1000, 1000, 1000, 1000 })
                         .addAction(android.R.drawable.ic_menu_call, "Accept", piAcceptIntent)
+                        .addAction(android.R.drawable.ic_menu_delete, "Decline", piRejectIntent)
                         .setFullScreenIntent(pendingIntent, true);
 
         return builder.build();
@@ -148,10 +165,10 @@ public class IncomingCallNotificationService extends Service {
 
     @TargetApi(Build.VERSION_CODES.O)
     private String createChannel(int channelImportance) {
+        Log.v(TAG, "Create Channel");
         NotificationChannel callInviteChannel = new NotificationChannel(Constants.VOICE_CHANNEL_HIGH_IMPORTANCE,
                 "Primary Voice Channel", NotificationManager.IMPORTANCE_HIGH);
         String channelId = Constants.VOICE_CHANNEL_HIGH_IMPORTANCE;
-
         if (channelImportance == NotificationManager.IMPORTANCE_LOW) {
             callInviteChannel = new NotificationChannel(Constants.VOICE_CHANNEL_LOW_IMPORTANCE,
                     "Primary Voice Channel", NotificationManager.IMPORTANCE_LOW);
@@ -166,6 +183,8 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private void accept(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "Accept");
+        ringtone.stop();
         endForeground();
         Intent activeCallIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         activeCallIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -177,28 +196,35 @@ public class IncomingCallNotificationService extends Service {
     }
 
     private void reject(CallInvite callInvite) {
+        Log.v(TAG, "Reject");
+        ringtone.stop();
         endForeground();
         callInvite.reject(getApplicationContext());
     }
 
     private void handleCancelledCall(Intent intent) {
+        Log.v(TAG, "Handle Cancel Call");
         endForeground();
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     private void handleIncomingCall(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "Handle Incoming Call");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ringtone.play();
             setCallInProgressNotification(callInvite, notificationId);
         }
         sendCallInviteToActivity(callInvite, notificationId);
     }
 
     private void endForeground() {
+        Log.v(TAG, "End Foreground");
         stopForeground(true);
     }
 
     @TargetApi(Build.VERSION_CODES.O)
     private void setCallInProgressNotification(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "SetCallInProgressNotification");
         if (isAppVisible()) {
             Log.i(TAG, "setCallInProgressNotification - app is visible.");
             startForeground(notificationId, createNotification(callInvite, notificationId, NotificationManager.IMPORTANCE_LOW));
@@ -208,13 +234,40 @@ public class IncomingCallNotificationService extends Service {
         }
     }
 
+    private Bitmap getIconBitmap() {
+        int resId = getIconIdForNotification();
+        PackageManager manager = getPackageManager();
+        try {
+            Resources resources = manager.getResourcesForApplication(getPackageName());
+            Bitmap icon = BitmapFactory.decodeResource(resources, resId);
+            return icon;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private int getIconIdForNotification() {
+        PackageManager manager = getPackageManager();
+        try {
+            Resources resources = manager.getResourcesForApplication(getPackageName());
+            int resId = resources.getIdentifier("ic_launcher", "mipmap", getPackageName());
+            return resId;
+        } catch (Exception ex) {
+
+        }
+        return R.drawable.launcher_icon;
+    }
+
     /*
      * Send the CallInvite to the VoiceActivity. Start the activity if it is not running already.
      */
     private void sendCallInviteToActivity(CallInvite callInvite, int notificationId) {
+        Log.v(TAG, "Send Call Invite To Activity");
         if (Build.VERSION.SDK_INT >= 29 && !isAppVisible()) {
+            Log.v(TAG, "App Not Visible");
             return;
         }
+        Log.v(TAG, "App Is Visible");
         Intent intent = new Intent(Constants.ACTION_INCOMING_CALL);
         intent.putExtra(Constants.INCOMING_CALL_NOTIFICATION_ID, notificationId);
         intent.putExtra(Constants.INCOMING_CALL_INVITE, callInvite);
